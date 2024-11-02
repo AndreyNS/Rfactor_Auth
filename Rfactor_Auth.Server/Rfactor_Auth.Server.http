@@ -1,0 +1,6 @@
+@Rfactor_Auth.Server_HostAddress = http://localhost:5231
+
+GET {{Rfactor_Auth.Server_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
