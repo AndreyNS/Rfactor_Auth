@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
+import { BrowserRouter as Router, Route, Link, Routes } from 'react-router-dom';
 import './App.css';
+import VoicePage from './pages/VoiceAuth.tsx';
 
 interface Forecast {
     date: string;
@@ -39,18 +41,42 @@ function App() {
         </table>;
 
     return (
-        <div>
-            <h1 id="tableLabel">Weather forecast</h1>
-            <p>This component demonstrates fetching data from the server.</p>
-            {contents}
-        </div>
+        <Router>
+            <div>
+                <nav>
+                    <ul>
+                        <li><Link to="/">Home</Link></li>
+                        <li><Link to="/about">About</Link></li>
+                    </ul>
+                </nav>
+                <Routes>
+                    <Route path="/" element={
+                        <div>
+                            <h1 id="tableLabel">Weather forecast</h1>
+                            <p>This component demonstrates fetching data from the server.</p>
+                            {contents}
+                        </div>
+                    } />
+                    <Route path="/about" element={<VoicePage />} />
+                </Routes>
+            </div>
+        </Router>
     );
 
     async function populateWeatherData() {
-        const response = await fetch('weatherforecast');
-        const data = await response.json();
-        setForecasts(data);
+        //const response = await fetch('weatherforecast');
+        //const data = await response.json();
+        //setForecasts(data);
     }
+}
+
+function About() {
+    return (
+        <div>
+            <h2>About</h2>
+            <p>This is the About page.</p>
+        </div>
+    );
 }
 
 export default App;

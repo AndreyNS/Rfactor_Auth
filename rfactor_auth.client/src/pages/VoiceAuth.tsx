@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import Config from "react-native-config";
 
 const VoiceAuth: React.FC = () => {
     const [recording, setRecording] = useState<boolean>(false);
@@ -58,18 +57,42 @@ const VoiceAuth: React.FC = () => {
 
     const sendAudioToBackend = async (blob: Blob) => {
         const formData = new FormData();
-        const apiUrl = Config.BACKEND_URL;
-        console.log(`API URL: ${apiUrl}`);
+        formData.append('audio', blob);
 
-        formData.append('audio', blob, 'recording.wav');
+        const statusElement = document.createElement('div');
+        statusElement.style.position = 'fixed';
+        statusElement.style.top = '10px';
+        statusElement.style.right = '10px';
+        statusElement.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+        statusElement.style.color = 'white';
+        statusElement.style.padding = '10px';
+        statusElement.style.borderRadius = '5px';
+        statusElement.style.zIndex = '1000';
+        statusElement.innerText = 'Uploading...';
+        document.body.appendChild(statusElement);
 
-        const response = await fetch('https://your-backend-url/api/voiceauth', {
-            method: 'POST',
-            body: formData
-        });
+        try {
+            const response = await fetch('https://localhost:7109/api/VoiceAuth/setvoice', {
+                method: 'POST',
+                body: formData
+            });
 
-        const data = await response.json();
-        console.log('Response from backend', data);
+            const data = await response.json();
+            console.log('Response from backend', data);
+
+            if (response.ok) {
+                statusElement.innerText = 'Upload successful!';
+            } else {
+                statusElement.innerText = 'Upload failed!';
+            }
+        } catch (error) {
+            console.error('Error uploading audio:', error);
+            statusElement.innerText = 'Upload failed!';
+        } finally {
+            setTimeout(() => {
+                document.body.removeChild(statusElement);
+            }, 3000);
+        }
     };
 
     const draw = () => {
@@ -107,11 +130,20 @@ const VoiceAuth: React.FC = () => {
         drawVisual();
     };
 
+    const playRecording = () => {
+        if (audioBlob) {
+            const audioUrl = URL.createObjectURL(audioBlob);
+            const audio = new Audio(audioUrl);
+            audio.play();
+        }
+    };
+
     return (
         <div>
             <button onClick={startRecording} disabled={recording}>Start Voice Auth</button>
             {recording && <button onClick={stopRecording}>Stop Recording</button>}
             {!recording && audioBlob && <button onClick={() => sendAudioToBackend(audioBlob)}>Send Recording</button>}
+            {!recording && audioBlob && <button onClick={playRecording}>Play Recording</button>}
             <div>
                 <canvas ref={canvasRef} width="600" height="100"></canvas>
             </div>

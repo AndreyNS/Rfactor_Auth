@@ -7,6 +7,13 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowSpecificOrigin",
+    build => build.AllowAnyOrigin()
+    .AllowAnyMethod()
+    .AllowAnyHeader());
+});
 
 builder.Services
     .AddAuthentication(options =>
@@ -33,8 +40,14 @@ builder.Services
     });
 
 
+builder.Services.AddHttpClient("VoiceAuth", client =>
+{
+    client.BaseAddress = new Uri("https://localhost:7117/api/");
+});
+
 var app = builder.Build();
 
+app.UseCors("AllowSpecificOrigin");
 app.UseDefaultFiles();
 app.UseStaticFiles();
 

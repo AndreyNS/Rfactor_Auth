@@ -2,6 +2,8 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Rfactor_Auth.Server.Models;
+using System.Net.Http;
+using System.Net.Http.Headers;
 
 namespace Rfactor_Auth.Server.Controllers
 {
@@ -9,65 +11,70 @@ namespace Rfactor_Auth.Server.Controllers
     [ApiController]
     public class VoiceAuthController : ControllerBase
     {
-        private readonly ILogger<VoiceAuthController> _logger; 
-        public VoiceAuthController(ILogger<VoiceAuthController> logger) 
-        { 
-            _logger = logger; 
+        private readonly ILogger<VoiceAuthController> _logger;
+        private HttpClient _httpClient;
+        public VoiceAuthController(ILogger<VoiceAuthController> logger, IHttpClientFactory httpClientFactory)
+        {
+            _logger = logger;
+            _httpClient = httpClientFactory.CreateClient("VoiceAuth");
         }
 
-        [HttpPost("initiate")] 
-        public IActionResult InitiateVoiceAuth() 
-        { 
-            var authenticationProperties = new AuthenticationProperties 
-            { 
-                RedirectUri = Url.Action(nameof(HandleLogin)) 
-            }; 
-            _logger.LogInformation($"[{nameof(VoiceAuthController)}] Initiating voice authentication."); 
-            return Challenge(authenticationProperties, "RfactorVoice"); }
+        [HttpPost("initiate")]
+        public IActionResult InitiateVoiceAuth()
+        {
+            var authenticationProperties = new AuthenticationProperties
+            {
+                RedirectUri = Url.Action(nameof(HandleLogin))
+            };
+            _logger.LogInformation($"[{nameof(VoiceAuthController)}] Initiating voice authentication.");
+            return Challenge(authenticationProperties, "RfactorVoice");
+        }
 
-        [HttpGet("callback")] 
-        public async Task<IActionResult> HandleLogin() 
-        { 
-            var code = Request.Query["code"]; 
-            if (string.IsNullOrEmpty(code)) 
-            { 
-                return BadRequest("Authorization code is missing."); 
-            } 
+        [HttpGet("callback")]
+        public async Task<IActionResult> HandleLogin()
+        {
+            var code = Request.Query["code"];
+            if (string.IsNullOrEmpty(code))
+            {
+                return BadRequest("Authorization code is missing.");
+            }
             //var tokenResponse = await GetTokenAsync(code); 
             //if (tokenResponse == null) 
             //{ 
             //    return StatusCode(StatusCodes.Status500InternalServerError, "Failed to get token."); 
             //} 
-            
-            _logger.LogInformation($"[{nameof(VoiceAuthController)}] Voice authentication successful."); 
-            return Ok("Voice authentication successful."); }
 
-
-        [HttpPost]
-        public async Task<IActionResult> ProcessVoiceAuth([FromBody] VoiceData voiceData)
-        {
-            if (voiceData == null || string.IsNullOrWhiteSpace(voiceData.VoiceBase64))
-            {
-                return BadRequest(new
-                {
-                    Message = "Voice Data empty"
-                });
-            }
-
-            var result = await SendAudioToVoiceService(voiceData.VoiceBase64);
-            if (result)
-            {
-                return Ok(new { Message = "Voice authentication successful" });
-            }
-            return BadRequest(new
-            {
-                Message = "Voice authentication failed"
-            });
+            _logger.LogInformation($"[{nameof(VoiceAuthController)}] Voice authentication successful.");
+            return Ok("Voice authentication successful.");
         }
 
-        private async Task<bool> SendAudioToVoiceService(string audioUri)
+        [HttpPost("setvoice")]
+        public async Task<IActionResult> ProcessVoiceAuth()
         {
-            return true;
+            try
+            {
+                using (var memoryStream = new MemoryStream())
+                {
+                    await Request.Body.CopyToAsync(memoryStream);
+                    var audioBytes = memoryStream.ToArray();
+
+                    var requestContent = new ByteArrayContent(audioBytes); 
+                    requestContent.Headers.ContentType = new MediaTypeHeaderValue("audio/wav");
+                    var response = await _httpClient.PostAsync("Voice/register", requestContent);
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        return Ok(new { Message = "Voice authentication successful" });
+                    }
+
+                    return BadRequest(new { Message = "Voice authentication failed" });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing voice authentication.");
+                return StatusCode(StatusCodes.Status500InternalServerError, "Internal server error.");
+            }
         }
     }
 }
