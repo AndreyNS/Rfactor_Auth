@@ -38,29 +38,31 @@ builder.Services.AddAuthorization(options =>
 
 
 
+string identityServerUrl = builder.Configuration["IdentityServer"];
 builder.Services
     .AddAuthentication(options =>
     {
         options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-        options.DefaultChallengeScheme = "RfactorVoice";
+        options.DefaultChallengeScheme = "IdentityServer";
     })
-    .AddOAuth("RfactorVoice", options =>
+    .AddCookie()
+    .AddOAuth("IdentityServer", options =>
     {
-        options.ClientId = "your-client-id"; 
-        options.ClientSecret = "your-client-secret"; 
+        options.ClientId = "react_client";
+        options.ClientSecret = "mysecret";
 
-        options.AuthorizationEndpoint = "https://your-voice-service/connect/authorize"; 
-        options.TokenEndpoint = "https://your-voice-service/connect/token"; 
+        options.AuthorizationEndpoint = $"{identityServerUrl}oauth2/v2/auth";
+        options.TokenEndpoint = $"{identityServerUrl}oauth2/v2/token";
 
-        options.CallbackPath = new PathString("/signin-oauth"); 
-        options.SaveTokens = true; 
-        options.Scope.Add("profile"); 
+        options.CallbackPath = new PathString("/");
+        options.SaveTokens = true;
+        options.Scope.Add("profile");
+        options.Scope.Add("openid");
 
-        options.Scope.Add("openid"); 
-        options.ClaimActions.MapJsonKey(ClaimTypes.NameIdentifier, "sub"); 
+        options.ClaimActions.MapJsonKey(ClaimTypes.NameIdentifier, "sub");
         options.ClaimActions.MapJsonKey(ClaimTypes.Name, "name");
-
     });
+
 
 builder.Services.AddHttpClient("VoiceAuth", client =>
 {
@@ -85,13 +87,6 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseAuthentication();
-app.UseAuthorization();
-
-app.UseEndpoints(endpoints =>
-{
-    endpoints.MapControllers()
-        .RequireAuthorization("ApiScope");
-});
 
 app.UseHttpsRedirection();
 app.UseAuthorization();

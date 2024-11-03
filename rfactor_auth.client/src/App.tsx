@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Route, Link, Routes } from 'react-router-dom';
 import './App.css';
 import VoicePage from './pages/VoiceAuth.tsx';
+import Register from './pages/RegisterPage.tsx';
 
 interface Forecast {
     date: string;
@@ -47,6 +48,7 @@ function App() {
                     <ul>
                         <li><Link to="/">Home</Link></li>
                         <li><Link to="/about">About</Link></li>
+                        <li><Link to="/login">Login</Link></li>
                     </ul>
                 </nav>
                 <Routes>
@@ -58,6 +60,7 @@ function App() {
                         </div>
                     } />
                     <Route path="/about" element={<VoicePage />} />
+                    <Route path="/login" element={<Register />} />
                 </Routes>
             </div>
         </Router>

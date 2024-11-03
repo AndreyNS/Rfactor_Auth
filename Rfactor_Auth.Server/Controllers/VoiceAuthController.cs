@@ -19,7 +19,7 @@ namespace Rfactor_Auth.Server.Controllers
             _httpClient = httpClientFactory.CreateClient("VoiceAuth");
         }
 
-        [HttpPost("initiate")]
+        [HttpGet("initiate")]
         public IActionResult InitiateVoiceAuth()
         {
             var authenticationProperties = new AuthenticationProperties
@@ -27,7 +27,7 @@ namespace Rfactor_Auth.Server.Controllers
                 RedirectUri = Url.Action(nameof(HandleLogin))
             };
             _logger.LogInformation($"[{nameof(VoiceAuthController)}] Initiating voice authentication.");
-            return Challenge(authenticationProperties, "RfactorVoice");
+            return Challenge(authenticationProperties, "IdentityServer");
         }
 
         [HttpGet("callback")]

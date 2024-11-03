@@ -24,6 +24,8 @@ namespace VoiceAuthentification
                 new Client
                 {
                     ClientId = "react_client",
+                    ClientSecrets = { new Secret("mysecret".Sha256()) },
+
                     AllowedGrantTypes = GrantTypes.Code,
                     RequirePkce = true,
                     RequireClientSecret = false,
