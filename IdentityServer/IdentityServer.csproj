@@ -4,20 +4,14 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <UserSecretsId>9a22ed3a-1f2d-42b6-9e60-ffbb2635fdee</UserSecretsId>
+    <UserSecretsId>97f5ed17-bd30-4870-9138-2cfb5defe0c7</UserSecretsId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Duende.IdentityServer" Version="7.0.8" />
-    <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.21.0" />
-    <PackageReference Include="NAudio" Version="2.2.1" />
-    <PackageReference Include="NWaves" Version="0.9.6" />
-    <PackageReference Include="OxyPlot.Core" Version="2.2.0" />
-    <PackageReference Include="OxyPlot.Pdf" Version="2.2.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0" />
-    <PackageReference Include="System.Drawing.Common" Version="8.0.10" />
   </ItemGroup>
 
 </Project>

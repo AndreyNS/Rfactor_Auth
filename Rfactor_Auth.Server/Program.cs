@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -14,6 +15,28 @@ builder.Services.AddCors(options =>
     .AllowAnyMethod()
     .AllowAnyHeader());
 });
+
+
+builder.Services.AddAuthentication("Bearer")
+    .AddJwtBearer("Bearer", options =>
+    {
+        options.Authority = "https://localhost:5001"; // URL вашего IdentityServer4
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateAudience = false
+        };
+    });
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("ApiScope", policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.RequireClaim("scope", "api1.read");
+    });
+});
+
+
 
 builder.Services
     .AddAuthentication(options =>
@@ -39,8 +62,12 @@ builder.Services
 
     });
 
-
 builder.Services.AddHttpClient("VoiceAuth", client =>
+{
+    client.BaseAddress = new Uri("https://localhost:7117/api/");
+});
+
+builder.Services.AddHttpClient("ImageAuth", client =>
 {
     client.BaseAddress = new Uri("https://localhost:7117/api/");
 });
@@ -57,10 +84,20 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.UseEndpoints(endpoints =>
+{
+    endpoints.MapControllers()
+        .RequireAuthorization("ApiScope");
+});
+
 app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
-
 app.MapFallbackToFile("/index.html");
+
+app.UseRouting();
 
 app.Run();

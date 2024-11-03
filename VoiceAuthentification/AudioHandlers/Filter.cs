@@ -1,9 +1,11 @@
-﻿namespace VoiceAuthentification.AudioHandlers
+﻿using System.Numerics;
+
+namespace VoiceAuthentification.AudioHandlers
 {
     public static class Filter
     {
-        public static double[] noisySine = new double[20] { 40, 41, 38, 40, 45, 42, 43, 44, 40, 38, 44, 45, 40, 39, 37, 41, 42, 70, 44, 42 };
-        public static double[] clean = new double[20];
+        private static double[] noisySine = new double[20] { 40, 41, 38, 40, 45, 42, 43, 44, 40, 38, 44, 45, 40, 39, 37, 41, 42, 70, 44, 42 };
+        private static double[] clean = new double[20];
          
         public static void Kalman(double[] noisy)
         {
@@ -33,6 +35,17 @@
             }
 
             return;
+        }
+
+        public static double[] GetFrequencies(Complex[] fftResult, int sampleRate = 44100)
+        {
+            double[] magnitudes = fftResult.Select(complex => complex.Magnitude).ToArray();
+            double[] frequencies = new double[fftResult.Length / 2];
+            for (int i = 0; i < frequencies.Length; i++)
+            {
+                frequencies[i] = (double)i * sampleRate / fftResult.Length;
+            }
+            return frequencies;
         }
     }
 }

@@ -7,7 +7,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Rfactor_Auth.Server", "Rfac
 EndProject
 Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "rfactor_auth.client", "rfactor_auth.client\rfactor_auth.client.esproj", "{356A831E-DA6A-4329-B2A0-FBAF7AC06CA7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VoiceAuthentification", "VoiceAuthentification\VoiceAuthentification.csproj", "{35C0B0E5-6DD4-455F-B4D1-C1BECC7949D9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VoiceAuthentification", "VoiceAuthentification\VoiceAuthentification.csproj", "{35C0B0E5-6DD4-455F-B4D1-C1BECC7949D9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdentityServer", "IdentityServer\IdentityServer.csproj", "{F971433D-90F9-4311-9BC9-F79EB79F1A32}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -29,6 +31,10 @@ Global
 		{35C0B0E5-6DD4-455F-B4D1-C1BECC7949D9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{35C0B0E5-6DD4-455F-B4D1-C1BECC7949D9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{35C0B0E5-6DD4-455F-B4D1-C1BECC7949D9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F971433D-90F9-4311-9BC9-F79EB79F1A32}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F971433D-90F9-4311-9BC9-F79EB79F1A32}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F971433D-90F9-4311-9BC9-F79EB79F1A32}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F971433D-90F9-4311-9BC9-F79EB79F1A32}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

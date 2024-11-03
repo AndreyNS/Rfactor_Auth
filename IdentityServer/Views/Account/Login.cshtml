@@ -1,0 +1,13 @@
+﻿@model LoginInputModel
+<form asp-action="Login" method="post">
+    <input type="hidden" name="ReturnUrl" value="@Model.ReturnUrl" />
+    <div>
+        <label>Логин</label>
+        <input type="text" name="Username" />
+    </div>
+    <div>
+        <label>Пароль</label>
+        <input type="password" name="Password" />
+    </div>
+    <button type="submit">Войти</button>
+</form>

@@ -2,12 +2,15 @@ import React, { useState, useEffect, useRef } from 'react';
 
 const VoiceAuth: React.FC = () => {
     const [recording, setRecording] = useState<boolean>(false);
-    const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
     const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
     const [analyser, setAnalyser] = useState<AnalyserNode | null>(null);
     const [audioData, setAudioData] = useState<Uint8Array | null>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const silenceThreshold = 5;  // Порог тишины
+    const silenceDuration = 2000;  // Длительность тишины (3 секунды)
+    let silenceTimer: NodeJS.Timeout | null = null;
 
     useEffect(() => {
         if (analyser) {
@@ -35,24 +38,54 @@ const VoiceAuth: React.FC = () => {
             };
 
             recorder.start();
-            setMediaRecorder(recorder);
+            mediaRecorderRef.current = recorder;
             setRecording(true);
             console.log('Recording started');
+
+            monitorSilence(analyserNode);
         } catch (err) {
             console.error('Failed to start recording', err);
         }
     };
 
     const stopRecording = () => {
-        if (mediaRecorder) {
-            mediaRecorder.stop();
-            setMediaRecorder(null);
+        if (mediaRecorderRef.current) {
+            mediaRecorderRef.current.stop();
+            mediaRecorderRef.current = null;
             setRecording(false);
             if (audioContext) {
                 audioContext.close();
             }
             console.log('Recording stopped');
         }
+    };
+
+    const monitorSilence = (analyserNode: AnalyserNode) => {
+        const bufferLength = analyserNode.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+
+        const checkSilence = () => {
+            analyserNode.getByteFrequencyData(dataArray);
+
+            const averageVolume = dataArray.reduce((sum, value) => sum + value, 0) / dataArray.length;
+            if (averageVolume < silenceThreshold) {
+                if (!silenceTimer) {
+                    silenceTimer = setTimeout(() => {
+                        stopRecording();
+                        silenceTimer = null;
+                    }, silenceDuration);
+                }
+            } else if (silenceTimer) {
+                clearTimeout(silenceTimer);
+                silenceTimer = null;
+            }
+
+            if (recording) {
+                requestAnimationFrame(checkSilence);
+            }
+        };
+
+        checkSilence();
     };
 
     const sendAudioToBackend = async (blob: Blob) => {

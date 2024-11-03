@@ -1,0 +1,52 @@
+﻿@model VoiceAuthInputModel
+<form asp-action="VoiceAuth" method="post">
+    <input type="hidden" name="ReturnUrl" value="@Model.ReturnUrl" />
+    <input type="hidden" name="Username" value="@Model.Username" />
+
+    <div>
+        <label>Запишите свой голос:</label>
+        <button id="recordButton">Записать</button>
+        <button id="stopButton" disabled>Остановить</button>
+        <audio id="audioPlayback" controls></audio>
+        <input type="hidden" id="voiceData" name="VoiceData" />
+    </div>
+    <button type="submit">Отправить</button>
+</form>
+
+<script>
+    let mediaRecorder;
+    let audioChunks = [];
+
+    document.getElementById('recordButton').onclick = async (e) => {
+        e.preventDefault();
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+
+        mediaRecorder.start();
+        audioChunks = [];
+
+        mediaRecorder.addEventListener('dataavailable', event => {
+            audioChunks.push(event.data);
+        });
+
+        mediaRecorder.addEventListener('stop', () => {
+            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+            const reader = new FileReader();
+            reader.readAsDataURL(audioBlob);
+            reader.onloadend = () => {
+                document.getElementById('voiceData').value = reader.result;
+                document.getElementById('audioPlayback').src = reader.result;
+            };
+        });
+
+        document.getElementById('recordButton').disabled = true;
+        document.getElementById('stopButton').disabled = false;
+    };
+
+    document.getElementById('stopButton').onclick = (e) => {
+        e.preventDefault();
+        mediaRecorder.stop();
+        document.getElementById('recordButton').disabled = false;
+        document.getElementById('stopButton').disabled = true;
+    };
+</script>
