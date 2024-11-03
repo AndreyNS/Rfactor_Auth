@@ -1,0 +1,152 @@
+@import url('https://fonts.googleapis.com/css2?family=VTB+Group+UI&display=swap');
+
+body {
+  font-family: 'VTB Group UI', sans-serif;
+  background: linear-gradient(to right, #b1baca, #062253);
+  color: white;
+  margin: 0;
+}
+
+.authorization {
+    min-height: 100vh;
+    display: -webkit-box;
+    display: -ms-flexbox;
+    -webkit-box-pack: center;
+    -ms-flex-pack: center;
+    justify-content: center;
+    -webkit-box-align: center;
+    -ms-flex-align: center;
+    align-items: center;
+}
+
+.auth-form-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+
+}
+
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    max-width: 300px;
+    width: 440px;
+    gap: 20px;
+    padding: 60px;
+    background: rgba(255, 255, 255, 0.08);
+    color: white;
+    border-radius: 20px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+    position: relative;
+}
+
+    .auth-form h1 {
+        font-family: Inter;
+        font-size: 24px;
+        line-height: 30px;
+        font-weight: 600;
+        text-align: center;
+        margin:0;
+    }
+
+    .auth-form input {
+        font-family: Inter;
+        font-size: 16px;
+        border-radius: 8px;
+        border: 1px solid #DAD9D8;
+        padding: 14px 20px;
+        background-color:transparent;
+        
+    }
+
+    .auth-form .btnBlue{
+        width:100%;
+        font-family: Inter;
+        font-size: 16px;
+        background-color: #123C69;
+        display: -webkit-box;
+        display: -ms-flexbox;
+        display: flex;
+        -webkit-box-pack: center;
+        -ms-flex-pack: center;
+        justify-content: center;
+        -webkit-box-align: center;
+        -ms-flex-align: center;
+        align-items: center;
+        color: #FFFFFF;
+        line-height: 20px;
+        border-radius: 8px;
+        padding: 14px;
+
+    }
+
+    .auth-form .btnWhite {
+        width: 100%;
+        font-family: Inter;
+        font-size: 16px;
+        background-color: transparent;
+        display: -webkit-box;
+        display: -ms-flexbox;
+        display: flex;
+        -webkit-box-pack: center;
+        -ms-flex-pack: center;
+        justify-content: center;
+        -webkit-box-align: center;
+        -ms-flex-align: center;
+        align-items: center;
+        color: white;
+        line-height: 20px;
+        border-radius: 8px;
+        padding: 14px;
+        border: 2px solid #123C69;
+        -webkit-transition: border 0.2s ease-in-out, color 0.2s ease-in-out;
+        transition: border 0.2s ease-in-out, color 0.2s ease-in-out;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        white-space: pre;
+    }
+
+.form-group {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: bold;
+}
+
+input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+  color: #A6A6A6
+}
+
+input::placeholder {
+  color: #A6A6A6;
+  opacity: 1;
+  font-size:16px;
+}
+
+.submit-button {
+  width: 100%;
+  padding: 10px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.submit-button:hover {
+  background-color: #0056b3;
+}

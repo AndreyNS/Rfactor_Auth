@@ -37,8 +37,6 @@ namespace IdentityServer.Controllers
             {
                 return BadRequest("Missing required parameters.");
             }
-
-            // Если все параметры валидны, перенаправляем на страницу авторизации
             return View(new LoginInputModel());
         }
     }

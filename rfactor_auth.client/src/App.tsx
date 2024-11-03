@@ -4,6 +4,10 @@ import './App.css';
 import VoicePage from './pages/VoiceAuth.tsx';
 import Register from './pages/RegisterPage.tsx';
 
+import AuthForm from './pages/AuthForm';
+import Header from './pages/Header';
+import AboutUs from './pages/AboutUs';
+
 interface Forecast {
     date: string;
     temperatureC: number;
@@ -17,6 +21,11 @@ function App() {
     useEffect(() => {
         populateWeatherData();
     }, []);
+
+    const handleLogin = (username: string, password: string) => {
+        console.log('Username:', username);
+        console.log('Password:', password);
+    };
 
     const contents = forecasts === undefined
         ? <p><em>Loading... Please refresh once the ASP.NET backend has started. See <a href="https://aka.ms/jspsintegrationreact">https://aka.ms/jspsintegrationreact</a> for more details.</em></p>
@@ -42,27 +51,37 @@ function App() {
         </table>;
 
     return (
+        //<Router>
+        //    <div>
+        //        <nav>
+        //            <ul>
+        //                <li><Link to="/">Home</Link></li>
+        //                <li><Link to="/about">About</Link></li>
+        //                <li><Link to="/login">Login</Link></li>
+        //            </ul>
+        //        </nav>
+        //        <Routes>
+        //            <Route path="/" element={
+        //                <div>
+        //                    <h1 id="tableLabel">Weather forecast</h1>
+        //                    <p>This component demonstrates fetching data from the server.</p>
+        //                    {contents}
+        //                </div>
+        //            } />
+        //            <Route path="/about" element={<VoicePage />} />
+        //            <Route path="/login" element={<Register />} />
+        //        </Routes>
+        //    </div>
+        //</Router>
         <Router>
-            <div>
-                <nav>
-                    <ul>
-                        <li><Link to="/">Home</Link></li>
-                        <li><Link to="/about">About</Link></li>
-                        <li><Link to="/login">Login</Link></li>
-                    </ul>
-                </nav>
-                <Routes>
-                    <Route path="/" element={
-                        <div>
-                            <h1 id="tableLabel">Weather forecast</h1>
-                            <p>This component demonstrates fetching data from the server.</p>
-                            {contents}
-                        </div>
-                    } />
-                    <Route path="/about" element={<VoicePage />} />
-                    <Route path="/login" element={<Register />} />
-                </Routes>
-            </div>
+          <Header />
+          <div>
+            <Routes>
+              <Route path="/auth" element={<AuthForm onLogin={handleLogin} />} />
+              <Route path="/about" element={<AboutUs />} />
+              <Route path="/" element={<AuthForm onLogin={handleLogin} />} />
+            </Routes>
+          </div>
         </Router>
     );
 
@@ -73,13 +92,5 @@ function App() {
     }
 }
 
-function About() {
-    return (
-        <div>
-            <h2>About</h2>
-            <p>This is the About page.</p>
-        </div>
-    );
-}
 
 export default App;
