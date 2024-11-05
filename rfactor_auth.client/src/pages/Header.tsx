@@ -26,6 +26,9 @@ const Header: React.FC = () => {
             <li>
                 <Link to="/">Вход</Link>
             </li>
+            <li>
+                <Link to="/voice">Тесты</Link>
+            </li>
           <li>
             <Link to="/about">О нас</Link>
           </li>
