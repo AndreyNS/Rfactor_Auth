@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Options;
 using VoiceAuthentification;
+using VoiceAuthentification.Interface;
+using VoiceAuthentification.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,6 +23,9 @@ builder.Services.AddIdentityServer()
     .AddInMemoryApiScopes(Config.ApiScopes)
     .AddInMemoryIdentityResources(Config.GetIdentityResources())
     .AddTestUsers(Config.GetUsers());
+
+
+builder.Services.AddSingleton<IVoiceManager, VoiceManager>();
 
 //builder.Services.Configure<BitrixConfiguration>(builder.Configuration.GetSection("BitrixConfiguration"));
 //var bitrixConfig = app.Services.GetRequiredService<IOptions<BitrixConfiguration>>().Value;

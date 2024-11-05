@@ -3,12 +3,19 @@ import { Link } from 'react-router-dom';
 import '../styles/Header.css';
 import logovtb from '../assets/vtb_logo.svg'
 import titlecom from '../assets/titlecommand.png'
+import { useNavigate } from 'react-router-dom';
 
 const Header: React.FC = () => {
+    const navigate = useNavigate();
+
+    const handleLogoClick = () => {
+        navigate('/');
+    };
+
   return (
     <header className="header">
           <div className="logo-container">
-              <img src={logovtb} alt="Logo" className="header-logo" />
+              <img src={logovtb} alt="Logo" className="header-logo" onClick={handleLogoClick} />
               <img src={titlecom} alt="Title" className="header-title" />
           </div>
       <nav>
@@ -17,7 +24,7 @@ const Header: React.FC = () => {
             <Link to="/register">Регистрация</Link>
             </li>
             <li>
-                <Link to="/register">Вход</Link>
+                <Link to="/">Вход</Link>
             </li>
           <li>
             <Link to="/about">О нас</Link>

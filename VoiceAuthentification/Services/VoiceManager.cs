@@ -13,43 +13,64 @@ using System.Runtime.InteropServices;
 using NWaves.Windows;
 using NWaves.FeatureExtractors;
 using NWaves.Filters.Base;
+using VoiceAuthentification.Interface;
+using NWaves.Features;
+using NWaves.Utils;
+using Microsoft.Extensions.Logging;
 
 namespace VoiceAuthentification.Services
 {
-    public class VoiceManager : IDisposable
+    public class VoiceManager : IVoiceManager, IDisposable
     {
-        private const int SampleRate = 44100;
+        private const int SampleRate = 22050;
+        private const int FrameSize = 256;
+        private const int HopSize = 128;
+        private const double EnergyThreshold = 64;
+
+        private readonly ILogger<VoiceManager> _logger;
+        private readonly SpeechRecognition _speechRecognition;
+
         private byte[] AudioBytes { get; set; }
         private float[] Spectrum { get; set; }
         public string ResponseData { get; private set; }
 
+        private DiscreteSignal DiscreteSignal { get; set; }
+        
+        public VoiceManager(ILogger<VoiceManager> logger)
+        {
+            _logger = logger;
+            _speechRecognition = new();
+        }
         public async Task SetStreamAudio(Stream stream) => AudioBytes = await GetVoiceByteArrayAsync(stream);
         public async Task VoiceProcessAsync()
         {
             try
             {
-                Spectrum = await AnalyzeAsync(AudioBytes);
+                await _speechRecognition.RecognizeSpeechFromBytes(AudioBytes);
 
+                await AnalyzeAsync();
+                DiscreteSignal = PreprocessSignal(DiscreteSignal);
+
+                await ExtractPitch(); // Частота основного тона
+                //await ExtractFormants(); // Извлечение формантных частот
+                //await AnalyzeRhythm(); // Анализ длительности слова и ритма
+                //await ExtractCepstrum(); // Кэпстральные коэф (нестабильно)
+                //await ComputeAverageSlope(); Средний наклон спектра (нестабильно)
             }
             catch (Exception ex)
             {
                 return;
             }
         }
-
-        private async Task Draw()
+  
+        private async Task AnalyzeAsync()
         {
-            await Drawer.DrawPlot(PlotType.All, SampleRate, Spectrum);
-        }
-
-        private async Task<float[]> AnalyzeAsync(byte[] audioBytes)
-        {
-            int floatCount = audioBytes.Length / sizeof(float);
+            int floatCount = AudioBytes.Length / sizeof(float);
             float[] samples = new float[floatCount];
 
             for (int i = 0; i < floatCount; i++)
             {
-                samples[i] = BitConverter.ToSingle(audioBytes, i * sizeof(float));
+                samples[i] = BitConverter.ToSingle(AudioBytes, i * sizeof(float));
                 if (float.IsNaN(samples[i]) || float.IsInfinity(samples[i]) || Math.Abs(samples[i]) > 1e10)
                 {
                     samples[i] = 0;
@@ -69,129 +90,162 @@ namespace VoiceAuthentification.Services
             {
                 throw new Exception("Спектр содержит NaN значения.");
             }
-            return spectrum;
-        }
 
-        // Спектрограмма
-        private async Task PlotSpectrogramAsync(float[] samples, int sampleRate)
+            DiscreteSignal = new DiscreteSignal(SampleRate, spectrum);
+            Spectrum = spectrum;
+        }
+        private async Task ExtractPitch()
         {
-            try
-            {
-                int fftSize = 1024;
-                int hopSize = 512;
-                var stft = new Stft(fftSize, hopSize, WindowType.Hamming);
-                var magnitudeSpectrogram = stft.Spectrogram(samples);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex.Message);
-            }
-        }
+            int samplingRate = DiscreteSignal.SamplingRate;
 
-        // АЧХ
-        private async Task PlotFrequencyResponseAsync(float[] samples, int sampleRate)
+            var pitchExtractor = new PitchExtractor(new NWaves.FeatureExtractors.Options.PitchOptions
+            {
+                SamplingRate = samplingRate,
+                FrameSize = FrameSize,
+                HopSize = HopSize,
+            });
+
+            var pitches = pitchExtractor.ComputeFrom(DiscreteSignal);
+            foreach (var pitchArray in pitches)
+            {
+                float pitch = pitchArray[0];
+                _logger.LogInformation($"Частота основного тона: {pitch} Гц");
+            }
+
+            List<float> pitchContour = new List<float>();
+
+            foreach (var pitchArray in pitches)
+            {
+                float pitch = pitchArray[0];
+                pitchContour.Add(pitch);
+            }
+
+            double averagePitch = pitchContour.Average();
+            double pitchStdDev = Math.Sqrt(pitchContour.Average(v => Math.Pow(v - averagePitch, 2)));
+
+            _logger.LogInformation($"Средняя частота основного тона: {averagePitch} Гц");
+            _logger.LogInformation($"Флуктуации частоты основного тона (СКО): {pitchStdDev} Гц");
+
+        }
+        private async Task ExtractFormants()
         {
-            try
+            int samplingRate = DiscreteSignal.SamplingRate;
+            int frameSize = 256;
+            int hopSize = 128;
+            int lpcOrder = 10; 
+
+            for (int i = 0; i <= DiscreteSignal.Length - frameSize; i += hopSize)
             {
-                int fftSize = 1024;
-                float[] paddedSamples = new float[fftSize];
-                Array.Copy(samples, paddedSamples, Math.Min(samples.Length, fftSize));
+                var frameSamples = DiscreteSignal.Samples.Skip(i).Take(frameSize).ToArray();
+                var windowedFrame = frameSamples.Zip(NWaves.Windows.Window.OfType(NWaves.Windows.WindowType.Hamming, frameSize), (s, w) => s * w).ToArray();
 
-                var fft = new RealFft(fftSize);
-                var spectrum = new float[fftSize / 2 + 1];
-                fft.MagnitudeSpectrum(paddedSamples, spectrum);
+                var autocorr = new float[lpcOrder + 1];
+                for (int j = 0; j <= lpcOrder; j++)
+                {
+                    autocorr[j] = windowedFrame.Take(frameSize - j).Zip(windowedFrame.Skip(j), (a, b) => a * b).Sum();
+                }
 
-                var frequencies = Enumerable.Range(0, fftSize / 2 + 1)
-                                            .Select(i => i * sampleRate / (double)fftSize)
-                                            .ToArray();
+                var lpcCoefficients = new float[lpcOrder + 1];
+                var error = Filter.LevinsonDurbin(autocorr, lpcCoefficients, lpcOrder);
+
+                var roots = MathUtils.PolynomialRoots(lpcCoefficients.Select(c => (double)c).ToArray());
+
+                var formants = roots
+                    .Where(r => r.Imaginary >= 0)
+                    .Select(r => (float)(samplingRate * Math.Atan2(r.Imaginary, r.Real) / (2 * Math.PI)))
+                    .OrderBy(f => f)
+                    .Take(3) 
+                    .ToArray();
+
+                _logger.LogInformation("Формантные частоты:");
+                for (int j = 0; j < formants.Length; j++)
+                {
+                    _logger.LogInformation($"F{j + 1}: {formants[j]} Гц");
+                }
             }
-            catch (Exception ex)
+        }
+        private async Task AnalyzeRhythm()
+        {
+            int samplingRate = DiscreteSignal.SamplingRate;
+            int signalLength = DiscreteSignal.Length;
+            int frameIndex = 0;
+            bool isSpeech = false;
+            int speechStart = 0;
+            int frameSize = 512;
+            int hopSize = 256;
+
+
+            float maxAmplitude = DiscreteSignal.Samples.Max(Math.Abs);
+            if (maxAmplitude > 0)
             {
-                Console.WriteLine(ex.Message);
+                for (int i = 0; i < DiscreteSignal.Length; i++)
+                {
+                    DiscreteSignal.Samples[i] /= maxAmplitude;
+                }
+            }
+
+
+            for (int i = 0; i < signalLength; i += hopSize)
+            {
+                int frameEnd = Math.Min(i + frameSize, signalLength);
+                float[] frameSamples = DiscreteSignal.Samples.Skip(i).Take(frameEnd - i).ToArray();
+                var frame = new DiscreteSignal(samplingRate, frameSamples);
+
+                var energy = frame.Energy();
+
+                // Временный отладочный вывод энергии
+                _logger.LogInformation($"Энергия фрейма {frameIndex}: {energy}");
+
+                if (energy > EnergyThreshold)
+                {
+                    if (!isSpeech)
+                    {
+                        isSpeech = true;
+                        speechStart = frameIndex;
+                    }
+                }
+                else
+                {
+                    if (isSpeech)
+                    {
+                        isSpeech = false;
+                        int speechEnd = frameIndex;
+                        double duration = (speechEnd - speechStart) * hopSize / (double)samplingRate;
+                        _logger.LogInformation($"Длительность слова: {duration} с");
+                    }
+                }
+                frameIndex++;
+            }
+        }
+        private async Task ExtractCepstrum()
+        {
+            var fft = new Fft(FrameSize);
+
+            var window = NWaves.Windows.Window.OfType(NWaves.Windows.WindowType.Hamming, FrameSize);
+            var samples = DiscreteSignal.Samples.Take(FrameSize).ToArray();
+            samples.ApplyWindow(window);
+
+            var re = new float[FrameSize];
+            var im = new float[FrameSize];
+
+            Array.Copy(samples, re, samples.Length);
+            fft.Direct(re, im);
+
+            var magnitude = re.Zip(im, (r, i) => (float)Math.Sqrt(r * r + i * i)).ToArray();
+            var logSpectrum = magnitude.Select(m => (float)Math.Log(m + 1e-10)).ToArray();
+
+            Array.Clear(im, 0, im.Length);
+            fft.Inverse(logSpectrum, im);
+
+            int numCoeffs = 13;
+            _logger.LogInformation("Кепстральные коэффициенты:");
+            for (int i = 0; i < numCoeffs; i++)
+            {
+                _logger.LogInformation($"{logSpectrum[i]}");
             }
         }
 
-
-        //private void ExtractPitch(DiscreteSignal signal)
-        //{
-        //    int samplingRate = signal.SamplingRate;
-        //    int frameSize = 1024; // Размер окна анализа (может быть настроен)
-        //    int hopSize = 512;    // Шаг окна
-
-        //    var pitchExtractor = new PitchExtractor(new NWaves.FeatureExtractors.Options.PitchOptions
-        //    { samplingRate, frameSize, hopSize, PitchDetectorMethod.Autocorrelation
-        //    });
-
-        //    var pitches = pitchExtractor.CollectFeatures(signal);
-
-        //    // pitches - список массивов, каждый из которых содержит один элемент (частоту основного тона)
-        //    foreach (var pitchArray in pitches)
-        //    {
-        //        float pitch = pitchArray[0]; // Частота основного тона в Гц
-        //        Console.WriteLine($"Частота основного тона: {pitch} Гц");
-        //    }
-
-        //    List<float> pitchContour = new List<float>();
-
-        //    foreach (var pitchArray in pitches)
-        //    {
-        //        float pitch = pitchArray[0];
-        //        pitchContour.Add(pitch);
-        //    }
-
-        //    // Теперь pitchContour содержит интонационный контур, который можно анализировать или визуализировать
-
-        //    double averagePitch = pitchContour.Average();
-        //    double pitchStdDev = Math.Sqrt(pitchContour.Average(v => Math.Pow(v - averagePitch, 2)));
-
-        //    Console.WriteLine($"Средняя частота основного тона: {averagePitch} Гц");
-        //    Console.WriteLine($"Флуктуации частоты основного тона (СКО): {pitchStdDev} Гц");
-
-        //}
-
-
-
-        //// Извлечение формантных частот
-        //public void ExtractFormants(DiscreteSignal signal)
-        //{
-        //    int samplingRate = signal.SamplingRate;
-        //    int frameSize = 1024;
-        //    int hopSize = 512;
-        //    int lpcOrder = 12; // Порядок LPC (можно настроить)
-
-        //    var formantExtractor = new FormantExtractor(samplingRate, frameSize, hopSize, lpcOrder);
-
-        //    var formantTracks = formantExtractor.CollectFeatures(signal);
-
-        //    // formantTracks - список массивов с формантными частотами для каждого фрейма
-        //    foreach (var formants in formantTracks)
-        //    {
-        //        Console.WriteLine("Формантные частоты:");
-        //        for (int i = 0; i < formants.Length; i++)
-        //        {
-        //            Console.WriteLine($"F{i + 1}: {formants[i]} Гц");
-        //        }
-        //    }
-
-        //    List<float[]> formantContours = new List<float[]>();
-
-        //    foreach (var formants in formantTracks)
-        //    {
-        //        formantContours.Add(formants);
-        //    }
-
-        //    // Анализируем изменения формант во времени
-        //    for (int i = 1; i < formantContours.Count; i++)
-        //    {
-        //        for (int j = 0; j < formantContours[i].Length; j++)
-        //        {
-        //            float delta = formantContours[i][j] - formantContours[i - 1][j];
-        //            Console.WriteLine($"Изменение F{j + 1} между фреймами {i - 1} и {i}: {delta} Гц");
-        //        }
-        //    }
-        //}
-
-        // Вычисление огибающей спектра и его среднего наклона
+        //// Вычисление огибающей спектра и его среднего наклона
         //public void ExtractSpectralEnvelope(DiscreteSignal signal)
         //{
         //    int order = 12; // Порядок LPC
@@ -214,101 +268,58 @@ namespace VoiceAuthentification.Services
         //    Console.WriteLine($"Средний наклон спектра: {averageSlope}");
         //}
 
-        //private double ComputeAverageSlope(double[] spectrum)
-        //{
-        //    // Метод для вычисления среднего наклона спектра
-        //    // Можно использовать линейную регрессию на логарифмических значениях частоты и амплитуды
-        //    int N = spectrum.Length;
-        //    double sumX = 0;
-        //    double sumY = 0;
-        //    double sumXY = 0;
-        //    double sumXX = 0;
+        private async Task ComputeAverageSlope()
+        {
+            // Метод для вычисления среднего наклона спектра
+            // Можно использовать линейную регрессию на логарифмических значениях частоты и амплитуды
+            int N = Spectrum.Length;
+            double sumX = 0;
+            double sumY = 0;
+            double sumXY = 0;
+            double sumXX = 0;
 
-        //    for (int i = 0; i < N; i++)
-        //    {
-        //        double freq = i;
-        //        double magnitude = 20 * Math.Log10(spectrum[i] + 1e-10); // В дБ
+            for (int i = 0; i < N; i++)
+            {
+                double freq = i;
+                double magnitude = 20 * Math.Log10(Spectrum[i] + 1e-10); // В дБ
 
-        //        sumX += freq;
-        //        sumY += magnitude;
-        //        sumXY += freq * magnitude;
-        //        sumXX += freq * freq;
-        //    }
+                sumX += freq;
+                sumY += magnitude;
+                sumXY += freq * magnitude;
+                sumXX += freq * freq;
+            }
 
-        //    double slope = (N * sumXY - sumX * sumY) / (N * sumXX - sumX * sumX);
-        //    return slope;
-        //}
+            double slope = (N * sumXY - sumX * sumY) / (N * sumXX - sumX * sumX);
+            _logger.LogInformation($"Средний наклон спектра: {slope}");
+        }
 
-        // кепстральные коэф
-        //public void ExtractCepstrum(DiscreteSignal signal)
-        //{
-        //    int frameSize = 1024;
-        //    var fft = new Fft(frameSize);
+        private DiscreteSignal PreprocessSignal(DiscreteSignal signal)
+        {
+            float maxAmplitude = signal.Samples.Max(Math.Abs);
+            if (maxAmplitude > 0)
+            {
+                for (int i = 0; i < signal.Length; i++)
+                {
+                    signal.Samples[i] /= maxAmplitude;
+                }
+            }
 
-        //    var window = NWaves.Windows.Window.OfType(NWaves.Windows.WindowTypes.Hamming, frameSize);
-        //    var samples = signal.Samples.Take(frameSize).ToArray();
-        //    samples.ApplyWindow(window);
+            var highPassFilter = new NWaves.Filters.BiQuad.HighPassFilter(100, signal.SamplingRate);
+            signal = highPassFilter.ApplyTo(signal);
 
-        //    var re = new float[frameSize];
-        //    var im = new float[frameSize];
+            var window = NWaves.Windows.Window.OfType(NWaves.Windows.WindowType.Hamming, FrameSize);
 
-        //    fft.Direct(samples, re, im);
+            for (int i = 0; i < signal.Length; i += FrameSize)
+            {
+                var frameSamples = signal.Samples.Skip(i).Take(FrameSize).ToArray();
+                for (int j = 0; j < frameSamples.Length; j++)
+                {
+                    signal.Samples[i + j] = frameSamples[j] * window[j];
+                }
+            }
+            return signal;
+        }
 
-        //    // логарифм амплитудного спектра
-        //    var magnitude = re.Zip(im, (r, i) => (float)Math.Sqrt(r * r + i * i)).ToArray();
-        //    var logSpectrum = magnitude.Select(m => (float)Math.Log(m + 1e-10)).ToArray();
-
-        //    // Обратное преобразование Фурье
-        //    var cepstrum = new float[frameSize];
-        //    fft.Inverse(logSpectrum, cepstrum);
-
-        //    // первые N кепстральных коэффициентов
-        //    int numCoeffs = 13;
-        //    Console.WriteLine("Кепстральные коэффициенты:");
-        //    for (int i = 0; i < numCoeffs; i++)
-        //    {
-        //        Console.WriteLine(cepstrum[i]);
-        //    }
-        //}
-
-        // Анализ ритма и длительности слов
-        //public void AnalyzeRhythm(DiscreteSignal signal)
-        //{
-        //    int frameSize = 1024;
-        //    int hopSize = 512;
-        //    double energyThreshold = 0.01;
-
-        //    var frames = signal.SliceFrames(frameSize, hopSize);
-        //    bool isSpeech = false;
-        //    int speechStart = 0;
-        //    int frameIndex = 0;
-
-        //    foreach (var frame in frames)
-        //    {
-        //        var energy = frame.Energy();
-
-        //        if (energy > energyThreshold)
-        //        {
-        //            if (!isSpeech)
-        //            {
-        //                isSpeech = true;
-        //                speechStart = frameIndex;
-        //            }
-        //        }
-        //        else
-        //        {
-        //            if (isSpeech)
-        //            {
-        //                isSpeech = false;
-        //                int speechEnd = frameIndex;
-        //                double duration = (speechEnd - speechStart) * hopSize / (double)signal.SamplingRate;
-        //                Console.WriteLine($"Длительность слова: {duration} с");
-        //            }
-        //        }
-
-        //        frameIndex++;
-        //    }
-        //}
 
         // Извлечение уровня сигнала
         public void ExtractSignalLevel(DiscreteSignal signal)
@@ -329,20 +340,28 @@ namespace VoiceAuthentification.Services
             }
         }
 
+        private async Task Draw()
+        {
+            await Drawer.DrawPlot(PlotType.All, SampleRate, Spectrum);
+        }
+
+
+
+
 
 
         private bool _disposed = false;
-        public void Dispose() 
-        { 
-            Dispose(true); 
-            GC.SuppressFinalize(this); 
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
         protected virtual void Dispose(bool disposing)
         {
             if (!_disposed)
             {
                 if (disposing)
-                { 
+                {
                     if (AudioBytes != null)
                     {
                         AudioBytes = null;
@@ -352,13 +371,14 @@ namespace VoiceAuthentification.Services
                         Spectrum = null;
                     }
                     _disposed = true;
-                } 
+                }
             }
         }
 
-    ~VoiceManager()
-    {
-        Dispose(false);
+        ~VoiceManager()
+        {
+            Dispose(false);
+        }
     }
-}
+
 }

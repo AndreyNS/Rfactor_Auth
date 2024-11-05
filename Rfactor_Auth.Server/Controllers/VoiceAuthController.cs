@@ -1,6 +1,11 @@
-﻿using Microsoft.AspNetCore.Authentication;
+﻿using MediaToolkit.Model;
+using MediaToolkit;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.VisualBasic;
+using NAudio.Wave;
 using Rfactor_Auth.Server.Models;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -49,19 +54,63 @@ namespace Rfactor_Auth.Server.Controllers
         }
 
         [HttpPost("setvoice")]
-        public async Task<IActionResult> ProcessVoiceAuth()
+        public async Task<IActionResult> ProcessVoiceAuth(IFormFile voice)
         {
+            if (voice == null || voice.Length == 0)
+            {
+                return BadRequest(new { Message = "Файл не загружен или пустой" });
+            }
+
+            string tempFilePath = Path.Combine(Directory.GetCurrentDirectory(), "temp.webm");
+
+            using (var fileStream = System.IO.File.Create(tempFilePath))
+            {
+                voice.CopyTo(fileStream);
+            }
+
+            var filePath = Path.Combine(Directory.GetCurrentDirectory(), "goosy.wav");
+
+            var inputMediaFile = new MediaFile { Filename = tempFilePath };
+            var outputMediaFile = new MediaFile { Filename = filePath };
+
+            using (var engine = new Engine())
+            {
+                engine.Convert(inputMediaFile, outputMediaFile);
+            }
+
+            //System.IO.File.Delete(tempFilePath);
+
+
+            
+
+            using (var memoryStream = new MemoryStream())
+            {
+                await voice.CopyToAsync(memoryStream);
+
+                var waveFormat = new WaveFormat(44100, 2); 
+                using (var waveFileWriter = new WaveFileWriter(filePath, waveFormat))
+                {
+                    memoryStream.Position = 0;
+
+                    waveFileWriter.Write(memoryStream.ToArray(), 0, (int)memoryStream.Length);
+                }
+            }
+
+
             try
             {
                 using (var memoryStream = new MemoryStream())
                 {
-                    await Request.Body.CopyToAsync(memoryStream);
+                    await voice.CopyToAsync(memoryStream);
                     var audioBytes = memoryStream.ToArray();
 
-                    var requestContent = new ByteArrayContent(audioBytes); 
-                    requestContent.Headers.ContentType = new MediaTypeHeaderValue("audio/wav");
-                    var response = await _httpClient.PostAsync("Voice/register", requestContent);
+                    using var content = new MultipartFormDataContent();
+                    var fileContent = new ByteArrayContent(audioBytes);
+                    fileContent.Headers.ContentType = new MediaTypeHeaderValue("audio/wav");
 
+                    content.Add(fileContent, "voice", voice.FileName);
+
+                    var response = await _httpClient.PostAsync("Voice/register", content);
                     if (response.IsSuccessStatusCode)
                     {
                         return Ok(new { Message = "Voice authentication successful" });

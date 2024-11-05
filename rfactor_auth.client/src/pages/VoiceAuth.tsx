@@ -32,7 +32,7 @@ const VoiceAuth: React.FC = () => {
             setAudioContext(audioCtx);
             setAnalyser(analyserNode);
 
-            const recorder = new MediaRecorder(stream);
+            const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
             recorder.ondataavailable = (event) => {
                 setAudioBlob(event.data);
             };
@@ -69,12 +69,12 @@ const VoiceAuth: React.FC = () => {
 
             const averageVolume = dataArray.reduce((sum, value) => sum + value, 0) / dataArray.length;
             if (averageVolume < silenceThreshold) {
-                if (!silenceTimer) {
-                    silenceTimer = setTimeout(() => {
-                        stopRecording();
-                        silenceTimer = null;
-                    }, silenceDuration);
-                }
+                //if (!silenceTimer) {
+                //    silenceTimer = setTimeout(() => {
+                //        stopRecording();
+                //        silenceTimer = null;
+                //    }, silenceDuration);
+                //}
             } else if (silenceTimer) {
                 clearTimeout(silenceTimer);
                 silenceTimer = null;
@@ -90,11 +90,11 @@ const VoiceAuth: React.FC = () => {
 
     const sendAudioToBackend = async (blob: Blob) => {
         const formData = new FormData();
-        formData.append('audio', blob);
+        formData.append('voice', blob);
 
         const statusElement = document.createElement('div');
         statusElement.style.position = 'fixed';
-        statusElement.style.top = '10px';
+        statusElement.style.top = '75px';
         statusElement.style.right = '10px';
         statusElement.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
         statusElement.style.color = 'white';

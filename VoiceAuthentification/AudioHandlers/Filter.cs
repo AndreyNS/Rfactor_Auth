@@ -47,5 +47,27 @@ namespace VoiceAuthentification.AudioHandlers
             }
             return frequencies;
         }
+
+        public static float LevinsonDurbin(float[] autocorrelation, float[] lpc, int order)
+        {
+            var error = autocorrelation[0];
+            for (int i = 1; i <= order; i++)
+            {
+                float lambda = -autocorrelation[i];
+                for (int j = 1; j < i; j++)
+                {
+                    lambda -= lpc[j] * autocorrelation[i - j];
+                }
+                lambda /= error;
+
+                for (int j = 1; j < i; j++)
+                {
+                    lpc[j] += lambda * lpc[i - j];
+                }
+                lpc[i] = lambda;
+                error *= (1.0f - lambda * lambda);
+            }
+            return error;
+        }
     }
 }

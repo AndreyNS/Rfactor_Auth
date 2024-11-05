@@ -74,12 +74,12 @@ function App() {
         //    </div>
         //</Router>
         <Router>
-          <Header />
+          <Header/>
           <div>
-            <Routes>
-              <Route path="/auth" element={<AuthForm onLogin={handleLogin} />} />
-              <Route path="/about" element={<AboutUs />} />
-              <Route path="/" element={<AuthForm onLogin={handleLogin} />} />
+                <Routes>
+                    <Route path="/register" element={<VoicePage />} />
+               <Route path="/" element={<AuthForm onLogin={handleLogin} />} />
+              <Route path="/about" element={<AboutUs />} />   
             </Routes>
           </div>
         </Router>
