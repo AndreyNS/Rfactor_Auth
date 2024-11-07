@@ -20,6 +20,9 @@ const Header: React.FC = () => {
           </div>
       <nav>
         <ul className="nav-list">
+        <li>
+            <Link to="/account">ЛК</Link>
+            </li>
           <li>
             <Link to="/register">Регистрация</Link>
             </li>
@@ -28,6 +31,9 @@ const Header: React.FC = () => {
             </li>
             <li>
                 <Link to="/voice">Тесты</Link>
+            </li>
+            <li>
+                <Link to="/sphere">сфера</Link>
             </li>
           <li>
             <Link to="/about">О нас</Link>

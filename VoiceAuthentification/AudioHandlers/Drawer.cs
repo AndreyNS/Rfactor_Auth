@@ -7,6 +7,13 @@ namespace VoiceAuthentification.AudioHandlers
 {
     public static class Drawer
     {
+        private const string FormatType = ".png";
+        private const string PlotFolder = "PlotSignal";
+        private const string Spectrum = $"spectrum{FormatType}";
+        private const string Spectrogram = $"spectrogram{FormatType}";
+        private const string FrequencyResponse = $"frequency_response{FormatType}";
+
+
         public static async Task DrawPlot(PlotType plotType, int sampleRate, params float[] values)
         {
             switch (plotType)
@@ -66,8 +73,7 @@ namespace VoiceAuthentification.AudioHandlers
                         }
                     }
                 }
-                var filePath = Path.Combine(Directory.GetCurrentDirectory(), "spectrum.png");
-                bitmap.Save(filePath, ImageFormat.Png);
+                await PlotSaverAsync(Spectrum, bitmap);
             }
             catch (Exception ex)
             {
@@ -107,8 +113,7 @@ namespace VoiceAuthentification.AudioHandlers
                         }
                     }
                 }
-                var filePath = Path.Combine(Directory.GetCurrentDirectory(), "spectrogram.png");
-                bitmap.Save(filePath, ImageFormat.Png);
+                await PlotSaverAsync(Spectrogram, bitmap);
             }
             catch (Exception ex)
             {
@@ -155,13 +160,24 @@ namespace VoiceAuthentification.AudioHandlers
                         }
                     }
                 }
-                var filePath = Path.Combine(Directory.GetCurrentDirectory(), "frequency_response.png");
-                bitmap.Save(filePath, ImageFormat.Png);
+                await PlotSaverAsync(FrequencyResponse, bitmap);
             }
             catch (Exception ex)
             {
                 Console.WriteLine(ex.Message);
             }
+        }
+
+        private static async Task PlotSaverAsync(string namePlot, Bitmap bitmap)
+        {
+            string path = Path.Combine(Directory.GetCurrentDirectory(), PlotFolder);
+            if (!Directory.Exists(path))
+            {
+                Directory.CreateDirectory(path);
+            }
+
+            path = Path.Combine(path, namePlot);
+            bitmap.Save(path, ImageFormat.Png);
         }
     }
 

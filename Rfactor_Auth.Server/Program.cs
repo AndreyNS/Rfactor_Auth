@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.IdentityModel.Tokens;
+using Rfactor_Auth.Server.Interfaces;
+using Rfactor_Auth.Server.Services;
 using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,27 +18,7 @@ builder.Services.AddCors(options =>
     .AllowAnyHeader());
 });
 
-
-builder.Services.AddAuthentication("Bearer")
-    .AddJwtBearer("Bearer", options =>
-    {
-        options.Authority = "https://localhost:5001"; // URL вашего IdentityServer4
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateAudience = false
-        };
-    });
-
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy("ApiScope", policy =>
-    {
-        policy.RequireAuthenticatedUser();
-        policy.RequireClaim("scope", "api1.read");
-    });
-});
-
-
+builder.Services.AddSingleton<VoiceConverterBase, WebmToWavConverter>();
 
 string identityServerUrl = builder.Configuration["IdentityServer"];
 builder.Services

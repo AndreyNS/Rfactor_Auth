@@ -16,15 +16,6 @@ builder.Services.AddCors(options =>
 });
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddIdentityServer()
-    .AddDeveloperSigningCredential()
-    .AddInMemoryApiResources(Config.GetApiResources())
-    .AddInMemoryClients(Config.GetClients())
-    .AddInMemoryApiScopes(Config.ApiScopes)
-    .AddInMemoryIdentityResources(Config.GetIdentityResources())
-    .AddTestUsers(Config.GetUsers());
-
-
 builder.Services.AddSingleton<IVoiceManager, VoiceManager>();
 
 //builder.Services.Configure<BitrixConfiguration>(builder.Configuration.GetSection("BitrixConfiguration"));
@@ -39,7 +30,6 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("AllowSpecificOrigin");
-app.UseIdentityServer();
 app.UseRouting();
 app.UseHttpsRedirection();
 app.UseAuthorization();

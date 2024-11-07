@@ -9,6 +9,11 @@ using NAudio.Wave;
 using Rfactor_Auth.Server.Models;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using Rfactor_Auth.Server.Interfaces;
+using Rfactor_Auth.Server.Services;
+using System;
+using Newtonsoft.Json;
+using System.Text;
 
 namespace Rfactor_Auth.Server.Controllers
 {
@@ -16,12 +21,15 @@ namespace Rfactor_Auth.Server.Controllers
     [ApiController]
     public class VoiceAuthController : ControllerBase
     {
+        private readonly VoiceConverterBase _converter;
         private readonly ILogger<VoiceAuthController> _logger;
         private HttpClient _httpClient;
-        public VoiceAuthController(ILogger<VoiceAuthController> logger, IHttpClientFactory httpClientFactory)
+        public VoiceAuthController(ILogger<VoiceAuthController> logger, IHttpClientFactory httpClientFactory, VoiceConverterBase converter)
         {
             _logger = logger;
             _httpClient = httpClientFactory.CreateClient("VoiceAuth");
+            _converter = converter;
+
         }
 
         [HttpGet("initiate")]
@@ -56,53 +64,46 @@ namespace Rfactor_Auth.Server.Controllers
         [HttpPost("setvoice")]
         public async Task<IActionResult> ProcessVoiceAuth(IFormFile voice)
         {
+
+            //using (var client = new HttpClient())
+            //{пу
+            //    var bytephoto = System.IO.File.ReadAllBytes(@"C:\Users\az674\Downloads\response.png"); 
+            //    var base64Image = Convert.ToBase64String(bytephoto); 
+            //    var content = new StringContent(JsonConvert.SerializeObject(new { image = base64Image }), Encoding.UTF8, "application/json"); 
+            //    var response = await client.PostAsync("http://178.46.160.94/api/check/", content); 
+                
+            //    if (response.IsSuccessStatusCode) 
+            //    { 
+            //        var contentJson = await response.Content.ReadAsStringAsync(); 
+            //        Console.WriteLine(contentJson); 
+            //    } 
+            //    else 
+            //    { 
+            //        Console.WriteLine("Ошибка: " + response.StatusCode); 
+            //    }
+            //}
+
+
             if (voice == null || voice.Length == 0)
             {
                 return BadRequest(new { Message = "Файл не загружен или пустой" });
             }
-
-            string tempFilePath = Path.Combine(Directory.GetCurrentDirectory(), "temp.webm");
-
-            using (var fileStream = System.IO.File.Create(tempFilePath))
-            {
-                voice.CopyTo(fileStream);
-            }
-
-            var filePath = Path.Combine(Directory.GetCurrentDirectory(), "goosy.wav");
-
-            var inputMediaFile = new MediaFile { Filename = tempFilePath };
-            var outputMediaFile = new MediaFile { Filename = filePath };
-
-            using (var engine = new Engine())
-            {
-                engine.Convert(inputMediaFile, outputMediaFile);
-            }
-
-            //System.IO.File.Delete(tempFilePath);
-
-
-            
-
-            using (var memoryStream = new MemoryStream())
-            {
-                await voice.CopyToAsync(memoryStream);
-
-                var waveFormat = new WaveFormat(44100, 2); 
-                using (var waveFileWriter = new WaveFileWriter(filePath, waveFormat))
-                {
-                    memoryStream.Position = 0;
-
-                    waveFileWriter.Write(memoryStream.ToArray(), 0, (int)memoryStream.Length);
-                }
-            }
-
 
             try
             {
                 using (var memoryStream = new MemoryStream())
                 {
                     await voice.CopyToAsync(memoryStream);
+                    memoryStream.Position = 0;
+
+                    _converter.TurnSaver(false); // Не забыть поставить false
+        
+                    Stream convertedVoiceStream = await _converter.Convert(memoryStream);
+                    memoryStream.SetLength(0);
+
+                    await convertedVoiceStream.CopyToAsync(memoryStream);
                     var audioBytes = memoryStream.ToArray();
+                    convertedVoiceStream.Close();
 
                     using var content = new MultipartFormDataContent();
                     var fileContent = new ByteArrayContent(audioBytes);

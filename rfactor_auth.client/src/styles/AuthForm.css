@@ -36,12 +36,18 @@ body {
     max-width: 300px;
     width: 440px;
     gap: 20px;
-    padding: 60px;
+    padding: 54px 60px;
     background: rgba(255, 255, 255, 0.08);
     color: white;
     border-radius: 20px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
     position: relative;
+}
+
+@media (max-height: 820px) {
+    .auth-form {
+        margin-top: 80px;
+    }
 }
 
     .auth-form h1 {
@@ -50,7 +56,7 @@ body {
         line-height: 30px;
         font-weight: 600;
         text-align: center;
-        margin:0;
+        margin: 0;
     }
 
     .auth-form input {
@@ -59,12 +65,11 @@ body {
         border-radius: 8px;
         border: 1px solid #DAD9D8;
         padding: 14px 20px;
-        background-color:transparent;
-        
+        background-color: transparent;
     }
 
-    .auth-form .btnBlue{
-        width:100%;
+    .auth-form .btnBlue {
+        width: 100%;
         font-family: Inter;
         font-size: 16px;
         background-color: #123C69;
@@ -81,7 +86,6 @@ body {
         line-height: 20px;
         border-radius: 8px;
         padding: 14px;
-
     }
 
     .auth-form .btnWhite {
@@ -110,43 +114,110 @@ body {
         white-space: pre;
     }
 
-.form-group {
-  width: 100%;
-  margin-bottom: 16px;
-}
+    .form-group {
+        width: 100%;
+        margin-bottom: 16px;
+    }
 
-label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: bold;
-}
+    label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: bold;
+    }
 
-input {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  box-sizing: border-box;
-  color: #A6A6A6
-}
+    input {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-sizing: border-box;
+        color: #A6A6A6
+    }
 
-input::placeholder {
-  color: #A6A6A6;
-  opacity: 1;
-  font-size:16px;
-}
+        input::placeholder {
+            color: #A6A6A6;
+            opacity: 1;
+            font-size: 16px;
+        }
 
-.submit-button {
-  width: 100%;
-  padding: 10px;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 16px;
-}
+    .submit-button {
+        width: 100%;
+        padding: 10px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+    }
 
-.submit-button:hover {
-  background-color: #0056b3;
-}
+        .submit-button:hover {
+            background-color: #0056b3;
+        }
+
+
+
+
+    .input-with-hint {
+        position: relative;
+        width: 100%;
+    }
+
+    .hint {
+        position: absolute;
+        top: 50%;
+        left: 100%;
+        transform: translateY(-50%);
+        margin-left: 12px;
+        font-size: 0.9em;
+        color: #ffffff;
+        background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+        padding: 12px 18px;
+        border-radius: 12px 12px 12px 0;
+        box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.3);
+        white-space: nowrap;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
+
+
+    .input-with-hint input:focus + .hint {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(-50%) translateX(5px);
+    }
+
+
+    .hint-animated-in {
+        animation: fadeInSlide 0.3s ease forwards;
+    }
+
+    .hint-animated-out {
+        animation: fadeOutSlide 0.3s ease forwards;
+    }
+
+    @keyframes fadeInSlide {
+        0% {
+            opacity: 0;
+            transform: translateY(-50%) translateX(10px);
+        }
+
+        100% {
+            opacity: 1;
+            transform: translateY(-50%) translateX(5px);
+        }
+    }
+
+    @keyframes fadeOutSlide {
+        0% {
+            opacity: 1;
+            transform: translateY(-50%) translateX(5px);
+        }
+
+        100% {
+            opacity: 0;
+            transform: translateY(-50%) translateX(15px);
+        }
+    }

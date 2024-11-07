@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
+import { browserName } from 'react-device-detect';
 import '../styles/AuthForm.css';
+
 
 interface AuthFormProps {
   onLogin: (username: string, password: string) => void;
@@ -15,15 +17,28 @@ const AuthForm: React.FC<AuthFormProps> = ({ onLogin }) => {
   };
 
     const handleCancel = () => {
-        navigate('/'); // Переход на главную страницу
+        navigate('/'); 
     };
+    function getGreeting() {
+        const currentHour = new Date().getHours();
+
+        if (currentHour >= 5 && currentHour < 12) {
+            return "Доброе утро";
+        } else if (currentHour >= 12 && currentHour < 18) {
+            return "Добрый день";
+        } else if (currentHour >= 18 && currentHour < 22) {
+            return "Добрый вечер";
+        } else {
+            return "Доброй ночи";
+        }
+    }
 
   return (
     <div className="auth-form-container">
       <section className= "authorization">
         <form onSubmit={handleSubmit} >
             <div className="auth-form">
-                <h1>Добро пожаловать</h1>
+                <h1>{getGreeting()}, {browserName}</h1>
                 <input
                     type="text"
                     placeholder="Введите логин"

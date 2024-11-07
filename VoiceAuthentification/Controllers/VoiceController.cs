@@ -28,10 +28,10 @@ namespace VoiceAuthentification.Controllers
         [HttpPost("verify")]
         public async Task<IActionResult> Verify([FromBody] VoiceData voiceData)
         {
-            if (!IsValidateBody()) 
-            { 
-                return BadRequest(infoMessage); 
-            }
+            //if (!IsValidateBody()) 
+            //{ 
+            //    return BadRequest(infoMessage); 
+            //}
 
             //await GetVoiceStream(Request.Body);
             return Unauthorized();
@@ -41,37 +41,50 @@ namespace VoiceAuthentification.Controllers
         public async Task<IActionResult> Register(IFormFile voice)
         {
             infoMessage = "The voice has been successfully analyzed for registration, a refund is being made";
-            //if (!IsValidateBody())
+
+            using var ms = new MemoryStream();
+            await voice.CopyToAsync(ms);
+
+            if (!IsValidateBody(ms))
+            {
+                return BadRequest(infoMessage);
+            }
+
+            ms.Position = 0;
+
+            //using (var memoryStream = new MemoryStream())
             //{
-            //    return BadRequest(infoMessage);
+            //    await voice.CopyToAsync(memoryStream);
+            //    var audioBytes = memoryStream.ToArray();
+
+            //    memoryStream.Position = 0;
+
+
+            //    var waveFormat = new WaveFormat(16000, 1); // Частота и моно
+            //    using var waveFileWriter = new WaveFileWriter(filePath, waveFormat);
+            //    waveFileWriter.Write(audioBytes, 0, audioBytes.Length);
             //}
 
-            using (var memoryStream = new MemoryStream())
-            {
-                await voice.CopyToAsync(memoryStream);
-                var audioBytes = memoryStream.ToArray();
-                var filePath = Path.Combine(Directory.GetCurrentDirectory(), "goosy.wav");
 
-                var waveFormat = new WaveFormat(16000, 1); // Частота и моно
-                using var waveFileWriter = new WaveFileWriter(filePath, waveFormat);
+            await _audioManager.SetStreamAudio(ms);
+            ms.Close();
 
-                // Записываем данные из audioByte в файл WAV
-                waveFileWriter.Write(audioBytes, 0, audioBytes.Length);
-            }
-            //await _audioManager.SetStreamAudio(Request.Body);
-            //await _audioManager.VoiceProcessAsync();
+            await _audioManager.VoiceProcessAsync();
 
             _logger.LogInformation(infoMessage);
             return Ok();
         }
 
-        private bool IsValidateBody()
+        private bool IsValidateBody(Stream voice)
         {
-            if (this.Request.Body.Length <= 0)
+            if (voice.CanSeek)
             {
-                infoMessage = "Audio stream is empty";
-                _logger.LogError(infoMessage);
-                return false;
+                if (voice.Length == 0)
+                {
+                    infoMessage = "Audio stream is empty";
+                    _logger.LogError(infoMessage);
+                    return false;
+                }
             }
             return true;
         }

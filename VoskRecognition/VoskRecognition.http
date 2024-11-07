@@ -1,0 +1,6 @@
+@VoskRecognition_HostAddress = http://localhost:5125
+
+GET {{VoskRecognition_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

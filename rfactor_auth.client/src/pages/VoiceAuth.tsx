@@ -96,7 +96,6 @@ const VoiceAuth: React.FC = () => {
         statusElement.style.position = 'fixed';
         statusElement.style.top = '75px';
         statusElement.style.right = '10px';
-        statusElement.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
         statusElement.style.color = 'white';
         statusElement.style.padding = '10px';
         statusElement.style.borderRadius = '5px';
@@ -115,8 +114,10 @@ const VoiceAuth: React.FC = () => {
 
             if (response.ok) {
                 statusElement.innerText = 'Upload successful!';
+                statusElement.style.backgroundColor = 'green';
             } else {
                 statusElement.innerText = 'Upload failed!';
+                statusElement.style.backgroundColor = 'red';
             }
         } catch (error) {
             console.error('Error uploading audio:', error);

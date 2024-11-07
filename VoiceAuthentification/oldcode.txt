@@ -1,0 +1,120 @@
+﻿private async Task AnalyzeAsync()
+        {
+            var voice = new MemoryStream(AudioBytes);
+            var filePath = Path.Combine(Directory.GetCurrentDirectory(), "goosy.wav");
+            using (var stream = System.IO.File.Open(filePath, FileMode.Create))
+            {
+                await voice.CopyToAsync(stream);
+            }
+
+
+            //int floatCount = AudioBytes.Length / sizeof(float);
+            //float[] samples = new float[floatCount];
+
+            //for (int i = 0; i < floatCount; i++)
+            //{
+            //    samples[i] = BitConverter.ToSingle(AudioBytes, i * sizeof(float));
+            //    if (float.IsNaN(samples[i]) || float.IsInfinity(samples[i]) || Math.Abs(samples[i]) > 1e10)
+            //    {
+            //        samples[i] = 0;
+            //    }
+            //}
+
+            int floatCount = AudioBytes.Length / sizeof(short);
+            float[] samples = new float[floatCount];
+
+            for (int i = 0; i < floatCount; i++)
+            {
+                short pcmSample = BitConverter.ToInt16(AudioBytes, i * sizeof(short));
+                samples[i] = pcmSample / 32768f;
+            }
+
+
+            int fftSize = 4096; 
+            int frameSize = FrameSize; 
+            int hopSize = HopSize;
+
+            List<float[]> spectra = new List<float[]>();
+
+            for (int i = 0; i < samples.Length - frameSize; i += hopSize)
+            {
+                var frame = samples.Skip(i).Take(frameSize).ToArray();
+                var window = NWaves.Windows.Window.OfType(NWaves.Windows.WindowType.Hamming, frame.Length);
+                var windowedFrame = frame.Zip(window, (s, w) => s * w).ToArray();
+
+                float[] paddedFrame = new float[fftSize];
+                Array.Copy(windowedFrame, paddedFrame, windowedFrame.Length);
+
+                var fft = new RealFft(fftSize);
+                var spectrum = new float[fftSize / 2 + 1];
+                fft.MagnitudeSpectrum(paddedFrame, spectrum);
+
+                spectra.Add(spectrum);
+            }
+
+   
+            DiscreteSignal = new DiscreteSignal(SampleRate, samples);
+            Spectrum = spectra[0];
+            //var window = NWaves.Windows.Window.OfType(NWaves.Windows.WindowType.Hamming, samples.Length);
+            //var windowedSamples = samples.Zip(window, (s, w) => s * w).ToArray();
+
+            //int fftSize = 4096;
+            //var fft = new RealFft(fftSize);
+            //var spectrum = new float[fftSize / 2 + 1];
+
+            //fft.MagnitudeSpectrum(windowedSamples, spectrum);
+
+            //if (spectrum.Any(x => float.IsNaN(x)))
+            //{
+            //    throw new Exception("Спектр содержит NaN значения.");
+            //}
+
+            //DiscreteSignal = new DiscreteSignal(SampleRate, spectrum);
+            //Spectrum = spectrum;
+        }
+
+
+        private async Task ExtractPitch()
+        {
+            int samplingRate = DiscreteSignal.SamplingRate;
+
+            var pitchExtractor = new PitchExtractor(new NWaves.FeatureExtractors.Options.PitchOptions
+            {
+                SamplingRate = samplingRate,
+                FrameSize = FrameSize,
+                HopSize = HopSize,
+                HighFrequency = 500, 
+                LowFrequency = 50,
+            });
+
+            var pitches = pitchExtractor.ComputeFrom(DiscreteSignal);
+            foreach (var pitchArray in pitches)
+            {
+                float pitch = pitchArray[0];
+                _logger.LogInformation($"Частота основного тона: {pitch} Гц");
+            }
+
+            List<float> pitchContour = new List<float>();
+
+            foreach (var pitchArray in pitches)
+            {
+                float pitch = pitchArray[0];
+                pitchContour.Add(pitch);
+            }
+
+            pitchContour = pitchContour.Select((p, i) =>
+            {
+                int windowSize = 3;
+                int halfWindow = windowSize / 2;
+                int start = Math.Max(0, i - halfWindow);
+                int end = Math.Min(pitchContour.Count - 1, i + halfWindow);
+                return pitchContour.Skip(start).Take(end - start + 1).Average();
+            }).ToList();
+
+            double averagePitch = pitchContour.Average();
+            double pitchStdDev = Math.Sqrt(pitchContour.Average(v => Math.Pow(v - averagePitch, 2)));
+
+            _logger.LogInformation($"Средняя частота основного тона: {averagePitch} Гц");
+            _logger.LogInformation($"Флуктуации частоты основного тона (СКО): {pitchStdDev} Гц");
+
+        }

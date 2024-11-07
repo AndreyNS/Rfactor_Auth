@@ -1,0 +1,147 @@
+@import url('https://fonts.googleapis.com/css2?family=VTB+Group+UI&display=swap');
+
+body {
+    font-family: 'VTB Group UI', sans-serif;
+    background: url('/public/images/background.jpg') no-repeat center center fixed;
+    background-size: cover;
+    color: white;
+    margin: 0;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.user-profile-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    margin: 50px auto;
+    padding: 20px;
+    max-width: 1200px;
+    border-radius: 8px;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(20px);
+    gap:20px;
+}
+
+
+.user-profile-section-user {
+    flex: 1;
+    min-width: 300px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    border-radius: 8px;
+}
+
+.auth-section {
+    display: contents;
+}
+
+
+.user-profile-section {
+    flex: 1;
+    min-width: 300px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.auth-method-tile {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 20px;
+    background: linear-gradient(to right, black 40%, #102F55);
+    border-radius: 8px;
+    padding: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+}
+
+    .auth-method-tile:hover {
+        background: linear-gradient(to right, black 40%, #1a4177);
+    }
+    .auth-method-tile img {
+        height: 70px;
+        border-radius: 8px;
+    }
+
+.auth-method-text {
+    flex: 2;
+    margin-left: 20px;
+}
+
+.user-photo {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-bottom: 16px;
+}
+
+.form-group {
+    width: 100%;
+    margin-bottom: 16px;
+    text-align: left;
+}
+
+label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+}
+
+input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+.save-button {
+    padding: 10px 20px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+    .save-button:hover {
+        background-color: #0056b3;
+    }
+
+
+.button-container {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+}
+
+.top-right-button {
+    background-color: #102F55;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+    .top-right-button:hover {
+        background-color: #1a4177;
+    }
+
+
+
+
