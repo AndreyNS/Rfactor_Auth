@@ -11,7 +11,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VoiceAuthentification", "Vo
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IdentityServer", "IdentityServer\IdentityServer.csproj", "{F971433D-90F9-4311-9BC9-F79EB79F1A32}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VoskRecognition", "VoskRecognition\VoskRecognition.csproj", "{92E2620B-48CD-49DC-A405-8F334BFFAD84}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VoskRecognition", "VoskRecognition\VoskRecognition.csproj", "{92E2620B-48CD-49DC-A405-8F334BFFAD84}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
