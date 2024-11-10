@@ -1,0 +1,189 @@
+﻿@model IdentityServer.Models.AuthViewModel
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Voice</title>
+    <link rel="stylesheet" href="@Url.Content("~/css/site.css")" />
+    <link rel="stylesheet" href="@Url.Content("~/css/voice.css")" />
+</head>
+<body>
+    <div id="voice-auth-container">
+        <div id="noise-indicator">0%</div>
+        <div id="controls">
+            <button id="start-btn">Start</button>
+            <button id="stop-btn" style="display: none;">Stop</button>
+            <button id="send-btn" style="display: none;">Send</button>
+            <button id="play-btn" style="display: none;">Play</button>
+        </div>
+        <canvas id="waveform"></canvas>
+    </div>
+
+    <script>
+        let recording = false;
+        let mediaRecorder;
+        let audioBlob = null;
+        let audioContext;
+        let analyser;
+        let audioData;
+        let noiseAnalyser;
+        let noiseData;
+        const noiseIndicator = document.getElementById('noise-indicator');
+        const canvas = document.getElementById('waveform');
+        const canvasCtx = canvas.getContext('2d');
+
+        const gradientColors = [
+            ['#00ffff', '#0099ff'],
+            ['#0066cc', '#4b0082'],
+            ['#8a2be2', '#ff00ff'],
+            ['#ff007f', '#ff4500']
+        ];
+
+        const initializeAudio = async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                audioContext = new AudioContext();
+
+                const source = audioContext.createMediaStreamSource(stream);
+                noiseAnalyser = audioContext.createAnalyser();
+                noiseAnalyser.fftSize = 256;
+                source.connect(noiseAnalyser);
+                noiseData = new Uint8Array(noiseAnalyser.frequencyBinCount);
+                updateNoiseLevel();
+
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 2048;
+                source.connect(analyser);
+                audioData = new Uint8Array(analyser.frequencyBinCount);
+
+            } catch (error) {
+                console.error('Ошибка доступа к микрофону:', error);
+            }
+        };
+
+        const updateNoiseLevel = () => {
+            noiseAnalyser.getByteFrequencyData(noiseData);
+            const averageVolume = noiseData.reduce((sum, value) => sum + value, 0) / noiseData.length;
+            const noiseLevel = Math.min(Math.max((averageVolume / 128) * 100, 0), 100);
+
+            noiseIndicator.textContent = `${Math.round(noiseLevel)}%`;
+            noiseIndicator.style.transform = `scale(${1 + noiseLevel / 150})`;
+            noiseIndicator.style.backgroundColor = `rgba(${255 - noiseLevel * 2.5}, ${153}, 255, 0.6)`;
+            noiseIndicator.style.boxShadow = `0px 0px 20px rgba(${255 - noiseLevel * 2.5}, ${153}, 255, 0.6)`;
+
+            requestAnimationFrame(updateNoiseLevel);
+        };
+
+        const startRecording = async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+                mediaRecorder.ondataavailable = event => {
+                    audioBlob = event.data;
+                    document.getElementById('send-btn').style.display = 'inline';
+                    document.getElementById('play-btn').style.display = 'inline';
+                };
+                mediaRecorder.start();
+                recording = true;
+                document.getElementById('start-btn').style.display = 'none';
+                document.getElementById('stop-btn').style.display = 'inline';
+                drawWaveform();
+            } catch (error) {
+                console.error('Ошибка доступа к микрофону для записи', error);
+            }
+        };
+
+        const stopRecording = () => {
+            if (mediaRecorder) {
+                mediaRecorder.stop();
+                mediaRecorder = null;
+                recording = false;
+                document.getElementById('stop-btn').style.display = 'none';
+                document.getElementById('start-btn').style.display = 'inline';
+            }
+        };
+
+        const drawWaveform = () => {
+            const draw = () => {
+                analyser.getByteFrequencyData(audioData);
+                canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+
+                const sliceWidth = canvas.width / audioData.length;
+
+                gradientColors.forEach((colors) => {
+                    const gradient = canvasCtx.createLinearGradient(0, 0, canvas.width, 0);
+                    gradient.addColorStop(0, colors[0]);
+                    gradient.addColorStop(1, colors[1]);
+
+                    canvasCtx.lineWidth = 2;
+                    canvasCtx.strokeStyle = gradient;
+
+                    canvasCtx.beginPath();
+                    let x = 0;
+
+                    for (let i = 0; i < audioData.length; i++) {
+                        const v = audioData[i] / 128.0;
+                        const y = (canvas.height / 2) * (1 - v);
+
+                        if (i === 0) {
+                            canvasCtx.moveTo(x, y);
+                        } else {
+                            canvasCtx.lineTo(x, y);
+                        }
+                        x += sliceWidth;
+                    }
+                    canvasCtx.stroke();
+                });
+
+                if (recording) {
+                    requestAnimationFrame(draw);
+                }
+            };
+            draw();
+        };
+
+
+        const sendAudioToBackend = async () => {
+            if (!audioBlob) return;
+
+            const formData = new FormData();
+            formData.append('voice', audioBlob);
+
+            try {
+                const encodedRedirectUri = encodeURIComponent('@Model.ReturnUrl');
+                const encodedState = encodeURIComponent('@Model.State');
+                const response = await fetch(`/api/VoiceAuth/set?guid=@Model.Guid&redirect_uri=${encodedRedirectUri}&state=${encodedState}`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    alert('Upload successful!');
+                    window.location.href = data.redirectUri;
+                } else {
+                    alert('Upload failed!');
+                }
+            } catch (error) {
+                console.error('Ошибка загрузки аудио:', error);
+                alert('Upload failed!');
+            }
+        };
+
+        const playRecording = () => {
+            if (audioBlob) {
+                const audioUrl = URL.createObjectURL(audioBlob);
+                const audio = new Audio(audioUrl);
+                audio.play();
+            }
+        };
+
+        document.getElementById('start-btn').addEventListener('click', startRecording);
+        document.getElementById('stop-btn').addEventListener('click', stopRecording);
+        document.getElementById('send-btn').addEventListener('click', sendAudioToBackend);
+        document.getElementById('play-btn').addEventListener('click', playRecording);
+
+        initializeAudio();
+    </script>
+</body>
+</html>

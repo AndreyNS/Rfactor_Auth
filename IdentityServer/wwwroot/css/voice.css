@@ -1,0 +1,94 @@
+﻿body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    color: #fff;
+    font-family: Arial, sans-serif;
+}
+
+#voice-auth-container {
+    position: relative;
+    width: 800px;
+    height: 300px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: visible;
+    padding: 20px;
+}
+
+#noise-indicator {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 16px;
+    font-weight: bold;
+    transition: transform 0.1s ease;
+    box-shadow: 0px 0px 50px 20px rgba(0, 153, 255, 0.5), 0px 0px 30px 10px rgba(0, 153, 255, 0.7);
+    z-index: 2; 
+}
+
+#controls {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    gap: 10px;
+    z-index: 2;
+}
+
+button {
+    padding: 12px 18px;
+    font-size: 14px;
+    cursor: pointer;
+    border: none;
+    color: #fff;
+    border-radius: 8px;
+    font-weight: bold;
+    text-transform: uppercase;
+    background: linear-gradient(90deg, #4b5d67, #4b6584, #566573, #30336b, #2f3640, #34495e, #40739e, #57606f);
+    background-size: 300%;
+    animation: gradientAnimation 6s ease infinite;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(255, 255, 255, 0.1) inset;
+    transition: transform 0.2s ease;
+}
+
+    button:hover {
+        transform: scale(1.05);
+    }
+
+    button:active {
+        transform: scale(0.98);
+    }
+
+@keyframes gradientAnimation {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+
+#waveform {
+    width: 100%;
+    height:150px;
+    overflow: hidden;
+    border-radius: 4px;
+    margin-bottom:-150px
+}

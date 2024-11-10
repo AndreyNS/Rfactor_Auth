@@ -1,9 +1,11 @@
 using Microsoft.Extensions.Options;
+using System.Net.Security;
 using VoiceAuthentification;
 using VoiceAuthentification.Interface;
 using VoiceAuthentification.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -16,10 +18,15 @@ builder.Services.AddCors(options =>
 });
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddSingleton<IVoiceManager, VoiceManager>();
+builder.Services.AddTransient<IVoiceManager, VoiceManager>();
+builder.Services.AddSingleton<IRecognition, SpeechRecognition>();
+builder.Services.AddSingleton<EncryptionService>();
 
-//builder.Services.Configure<BitrixConfiguration>(builder.Configuration.GetSection("BitrixConfiguration"));
-//var bitrixConfig = app.Services.GetRequiredService<IOptions<BitrixConfiguration>>().Value;
+string recognitionUrl = builder.Configuration["RecognitionUrl"];
+builder.Services.AddHttpClient("RecognitionSpeech", client =>
+{
+    client.BaseAddress = new Uri(recognitionUrl);
+});
 
 var app = builder.Build();
 

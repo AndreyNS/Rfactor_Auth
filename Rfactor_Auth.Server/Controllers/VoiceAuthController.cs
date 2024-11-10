@@ -32,34 +32,6 @@ namespace Rfactor_Auth.Server.Controllers
 
         }
 
-        [HttpGet("initiate")]
-        public IActionResult InitiateVoiceAuth()
-        {
-            var authenticationProperties = new AuthenticationProperties
-            {
-                RedirectUri = Url.Action(nameof(HandleLogin))
-            };
-            _logger.LogInformation($"[{nameof(VoiceAuthController)}] Initiating voice authentication.");
-            return Challenge(authenticationProperties, "IdentityServer");
-        }
-
-        [HttpGet("callback")]
-        public async Task<IActionResult> HandleLogin()
-        {
-            var code = Request.Query["code"];
-            if (string.IsNullOrEmpty(code))
-            {
-                return BadRequest("Authorization code is missing.");
-            }
-            //var tokenResponse = await GetTokenAsync(code); 
-            //if (tokenResponse == null) 
-            //{ 
-            //    return StatusCode(StatusCodes.Status500InternalServerError, "Failed to get token."); 
-            //} 
-
-            _logger.LogInformation($"[{nameof(VoiceAuthController)}] Voice authentication successful.");
-            return Ok("Voice authentication successful.");
-        }
 
         [HttpPost("setvoice")]
         public async Task<IActionResult> ProcessVoiceAuth(IFormFile voice)
@@ -111,9 +83,11 @@ namespace Rfactor_Auth.Server.Controllers
 
                     content.Add(fileContent, "voice", voice.FileName);
 
-                    var response = await _httpClient.PostAsync("Voice/register", content);
+                    var response = await _httpClient.PostAsync("http://86.104.74.19:10221/api/recognition", content);
                     if (response.IsSuccessStatusCode)
                     {
+                        string phrase = await  response.Content.ReadAsStringAsync();
+
                         return Ok(new { Message = "Voice authentication successful" });
                     }
 

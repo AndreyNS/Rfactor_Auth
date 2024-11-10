@@ -12,10 +12,11 @@
         public string ReturnUrl { get; set; }
     }
 
-    public class VoiceAuthViewModel
+    public class AuthViewModel
     {
-        public string Username { get; set; }
         public string ReturnUrl { get; set; }
+        public Guid Guid { get; set; }
+        public string State { get; set; }
     }
 
     public class VoiceAuthInputModel

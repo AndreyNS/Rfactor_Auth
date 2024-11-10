@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 using VoskRecognition.Interfaces;
 using VoskRecognition.Services;
 
@@ -32,17 +34,19 @@ namespace VoskRecognition.Controllers
 
                 if (string.IsNullOrWhiteSpace(phrase))
                 {
-                    _logger.LogWarning($"[{nameof(VoiceRecognition)}] The phrase is empty for some reason");
+                    _logger.LogWarning($"[{nameof(VoiceRecognition)}] Фраза пуста.");
                     return NoContent();
                 }
 
-                _logger.LogInformation($"[{nameof(VoiceRecognition)}] The phrase was successfully received");
+                phrase = Convert.ToString(JsonConvert.DeserializeObject<dynamic>(phrase)?.text);
+
+                _logger.LogInformation($"[{nameof(VoiceRecognition)}] Фраза успешно возвращена.");
                 return Ok(phrase);
             }
             catch (Exception ex)
             {
                 ms.Close();
-                _logger.LogError(ex, $"[{nameof(VoiceRecognition)}] Coice analysis errors.");
+                _logger.LogError(ex, $"[{nameof(VoiceRecognition)}] Ошибка распознования.");
 
                 return StatusCode(StatusCodes.Status500InternalServerError);
             }         

@@ -1,4 +1,6 @@
-﻿namespace VoiceAuthentification.Interface
+﻿using VoiceAuthentification.Models;
+
+namespace VoiceAuthentification.Interface
 {
     public interface IManager
     {
@@ -8,5 +10,6 @@
     {
         Task SetStreamAudio(Stream stream);
         Task VoiceProcessAsync();
+        string GetVoiceData();
     }
 }

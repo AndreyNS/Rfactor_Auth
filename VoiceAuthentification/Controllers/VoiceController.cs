@@ -10,7 +10,7 @@ using VoiceAuthentification.Services;
 
 namespace VoiceAuthentification.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api")]
     [ApiController]
     public class VoiceController : ControllerBase
     {
@@ -25,54 +25,55 @@ namespace VoiceAuthentification.Controllers
             _audioManager = voiceManager;
         }
 
-        [HttpPost("verify")]
-        public async Task<IActionResult> Verify([FromBody] VoiceData voiceData)
-        {
-            //if (!IsValidateBody()) 
-            //{ 
-            //    return BadRequest(infoMessage); 
-            //}
+        //[HttpPost("verify")]
+        //public async Task<IActionResult> Verify([FromBody] VoiceData voiceData)
+        //{
+        //    //if (!IsValidateBody()) 
+        //    //{ 
+        //    //    return BadRequest(infoMessage); 
+        //    //}
 
-            //await GetVoiceStream(Request.Body);
-            return Unauthorized();
-        }
+        //    //await GetVoiceStream(Request.Body);
+        //    return Unauthorized();
+        //}
 
         [HttpPost("register")]
         public async Task<IActionResult> Register(IFormFile voice)
         {
-            infoMessage = "The voice has been successfully analyzed for registration, a refund is being made";
+            infoMessage = "Голос был успешно проанализирован для регистрации";
 
-            using var ms = new MemoryStream();
-            await voice.CopyToAsync(ms);
-
-            if (!IsValidateBody(ms))
+            try
             {
-                return BadRequest(infoMessage);
+                using var ms = new MemoryStream();
+                await voice.CopyToAsync(ms);
+
+                if (!IsValidateBody(ms))
+                {
+                    return BadRequest(infoMessage);
+                }
+
+                ms.Position = 0;
+
+                await _audioManager.SetStreamAudio(ms);
+                ms.Close();
+                await _audioManager.VoiceProcessAsync();
+
+                var body = _audioManager.GetVoiceData();
+
+                if (body == null)
+                {
+                    throw new Exception("Данные о голосе пусты");
+                }
+                _logger.LogInformation($"[{nameof(Register)}] {infoMessage}");
+                return Ok(body);
             }
+            catch (Exception ex)
+            {
+                infoMessage = "Ошибка при регистрации голоса";
 
-            ms.Position = 0;
-
-            //using (var memoryStream = new MemoryStream())
-            //{
-            //    await voice.CopyToAsync(memoryStream);
-            //    var audioBytes = memoryStream.ToArray();
-
-            //    memoryStream.Position = 0;
-
-
-            //    var waveFormat = new WaveFormat(16000, 1); // Частота и моно
-            //    using var waveFileWriter = new WaveFileWriter(filePath, waveFormat);
-            //    waveFileWriter.Write(audioBytes, 0, audioBytes.Length);
-            //}
-
-
-            await _audioManager.SetStreamAudio(ms);
-            ms.Close();
-
-            await _audioManager.VoiceProcessAsync();
-
-            _logger.LogInformation(infoMessage);
-            return Ok();
+                _logger.LogError(ex, $"[{nameof(Register)}] {infoMessage}");
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
         }
 
         private bool IsValidateBody(Stream voice)

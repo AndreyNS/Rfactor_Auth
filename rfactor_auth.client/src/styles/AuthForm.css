@@ -221,3 +221,82 @@ body {
             transform: translateY(-50%) translateX(15px);
         }
     }
+
+
+
+.error-message {
+    position: absolute;
+    top: 10px;
+    font-family: Inter;
+    right: -300px;
+    background-color: #ff4d4d;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-size: 16px;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+    white-space: nowrap;
+    opacity: 0;
+    transform: translateX(100%);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    z-index: 10;
+}
+
+    .error-message.show {
+        opacity: 1;
+        transform: translateX(-20px);
+    }
+
+    .error-message.hide {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+
+
+.loading-animation {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    color: white;
+}
+
+.loader {
+    text-align: center;
+}
+
+    .loader .spinner {
+        width: 50px;
+        height: 50px;
+        border: 5px solid rgba(255, 255, 255, 0.2);
+        border-top: 5px solid #ffffff; 
+        border-radius: 50%;
+        animation: spin 1s linear infinite; 
+        margin: 0 auto;
+    }
+
+    .loader p {
+        font-size: 1.2em;
+        margin-top: 10px;
+        animation: fadeIn 1.5s ease-in-out infinite;
+    }
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes fadeIn {
+    0%, 100% {
+        opacity: 0.4;
+    }
+
+    50% {
+        opacity: 1;
+    }
+}

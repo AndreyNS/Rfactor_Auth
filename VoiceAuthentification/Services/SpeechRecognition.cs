@@ -1,71 +1,56 @@
 ﻿using NAudio.Wave;
 using System.IO;
+using System.Net.Http.Headers;
+using VoiceAuthentification.Interface;
 using Vosk;
 
 namespace VoiceAuthentification.Services
 {
-    public class SpeechRecognition
+    public class SpeechRecognition : IRecognition
     {
-        public async Task RecognizeSpeechFromBytes(byte[] audioByte, int sampleRate = 16000)
+        private readonly ILogger<SpeechRecognition> _logger;
+        private readonly HttpClient _httpClient;
+        public SpeechRecognition(ILogger<SpeechRecognition> logger, IHttpClientFactory httpClient)
+        {
+            _logger = logger;
+            _httpClient = httpClient.CreateClient("RecognitionSpeech");
+        }
+
+        public async Task<string> RecognizeSpeech(byte[] audioBytes)
         {
             try
             {
-                await Task.Run(() =>
+                using var content = new MultipartFormDataContent();
+                var fileContent = new ByteArrayContent(audioBytes);
+                fileContent.Headers.ContentType = new MediaTypeHeaderValue("audio/wav");
+
+                content.Add(fileContent, "voice", "UserVoice");
+
+                var response = await _httpClient.PostAsync("api/recognition", content);
+                    if (response.IsSuccessStatusCode)
                 {
-                    var filePath = @"F:\Phone_ARU_OFF.wav";
-                    var audioBytes = File.ReadAllBytes(filePath);
-
-                    Vosk.Vosk.SetLogLevel(1);
-
-                    Model _model = new(@"F:\vosk-model-ru-0.42");
-
-                    byte[] buffer = new byte[4096];
-                    int bytesRead;
-
-                    using var stream = new MemoryStream(audioByte);
-
-                    Stream streamConv = ResampleTo16kHz(stream);
-                    using var rawStream = new RawSourceWaveStream(streamConv, new WaveFormat(sampleRate, 1));
-                    var recognizer = new VoskRecognizer(_model, sampleRate); 
-
-                    while ((bytesRead = streamConv.Read(buffer, 0, buffer.Length)) > 0)
+                    string phrase = await response.Content.ReadAsStringAsync();
+                    if (string.IsNullOrWhiteSpace(phrase))
                     {
-                        if (recognizer.AcceptWaveform(buffer, bytesRead))
-                        {
-                            Console.WriteLine("Распознанная фраза: " + recognizer.Result());
-                        }
-                        else
-                        {
-                            Console.WriteLine("Частичный результат: " + recognizer.PartialResult());
-                        }
+                        throw new Exception($"[{nameof(RecognizeSpeech)}] Фраза пуста, не удалось распознать");
                     }
 
-                    Console.WriteLine("Окончательный результат: " + recognizer.FinalResult());
-                }).ConfigureAwait(false);
+                    _logger.LogInformation($"[{nameof(RecognizeSpeech)}] Фраза возвращена назад");
+                    return phrase;
+                }
+
+                throw new Exception($"[{nameof(RecognizeSpeech)}] Ошибка сервиса распознавания голоса, [{response.StatusCode}]");
             }
             catch (AccessViolationException ex)
             {
-                Console.WriteLine($"Access violation: {ex.Message}");
+                _logger.LogError(ex, $"[{nameof(RecognizeSpeech)}] Access violation");
+                throw;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Unexpected error: {ex.Message}");
+                _logger.LogError(ex, $"[{nameof(RecognizeSpeech)}] Ошибка распознавателя голоса");
+                throw;
             }
-        }
-
-        private Stream ResampleTo16kHz(Stream inputStream)
-        {
-            var waveStream = new WaveFileReader(inputStream);
-            var resampler = new MediaFoundationResampler(waveStream, new WaveFormat(16000, waveStream.WaveFormat.Channels))
-            {
-                ResamplerQuality = 60
-            };
-
-            var outputStream = new MemoryStream();
-            WaveFileWriter.WriteWavFileToStream(outputStream, resampler);
-
-            outputStream.Position = 0;
-            return outputStream;
         }
     }
 }

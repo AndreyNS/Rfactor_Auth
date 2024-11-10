@@ -56,13 +56,13 @@ namespace Rfactor_Auth.Server.Services
                 {
                     isSave = !isSave;
                 }
-                _logger.LogInformation($"[{nameof(Convert)}] The conversion (webm to wav) was successful.");
+                _logger.LogInformation($"[{nameof(Convert)}] Конвертация (webm to wav) проведена успешно.");
                 return memoryStream;
                 
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"[{nameof(Convert)}] Error converting file.");
+                _logger.LogError(ex, $"[{nameof(Convert)}] Ошибка конвертации файла.");
                 throw;
             }
         }

@@ -1,5 +1,4 @@
 ﻿using VoiceAuthentification.AudioHandlers;
-using PdfSharp.Drawing;
 using System.Drawing;
 using System.Numerics;
 using NAudio.Wave;
@@ -17,6 +16,7 @@ using VoiceAuthentification.Interface;
 using NWaves.Features;
 using NWaves.Utils;
 using Microsoft.Extensions.Logging;
+using VoiceAuthentification.Models;
 
 namespace VoiceAuthentification.Services
 {
@@ -25,48 +25,54 @@ namespace VoiceAuthentification.Services
         private const int SampleRate = 44100; // частота дискретки
         private const int FrameSize = 2048; // размер фрейма (кадра) анализа
         private const int HopSize = 1024; // шаг анализа
-        private const int LpcOrder = 16; // шаг анализа
+        private const int LpcOrder = 16; // lpc анализа
         private const int HighFrequency = 300; // макс. анализируемая частота
         private const int LowFrequency = 70; // минимальная
-        private const double EnergyThreshold = 0.5; // пороговая энергия фрейма 
+        private const double EnergyThreshold = 0.5; // пороговая энергия фрейма (донастроить бы)
 
-
+        private readonly IRecognition _speechRecognition;
         private readonly ILogger<VoiceManager> _logger;
-        private readonly SpeechRecognition _speechRecognition;
+        private readonly string _decryptedKey;
 
         private byte[] AudioBytes { get; set; }
         private float[] Spectrum { get; set; }
-        public string ResponseData { get; private set; }
-
+        private VoiceDataRaw ResponseData { get; set; }
         private DiscreteSignal DiscreteSignal { get; set; }
         
-        public VoiceManager(ILogger<VoiceManager> logger)
+        public VoiceManager(ILogger<VoiceManager> logger, IRecognition recognition, EncryptionService encryptionService)
         {
+            _decryptedKey = encryptionService.GetDecryptedKey();
+            _speechRecognition = recognition;
             _logger = logger;
-            _speechRecognition = new();
         }
+
         public async Task SetStreamAudio(Stream stream) => AudioBytes = await GetVoiceByteArrayAsync(stream);
         public async Task VoiceProcessAsync()
         {
             try
             {
-                //await _speechRecognition.RecognizeSpeechFromBytes(AudioBytes);
-                _logger.LogInformation("Точка распознавание речи прошла успешно");
+                ResponseData = new();
 
-                await AnalyzeAsync();
-                _logger.LogInformation("Точка опредления спектра пройдена успешно");
+                string phrase = await _speechRecognition.RecognizeSpeech(AudioBytes);
+                _logger.LogInformation("Точка распознавания речи прошла успешно");
+
+                ResponseData.Phrase = phrase;
+
+                await AnalyzeAsync(); // Создание спектра
+                _logger.LogInformation("Точка определения спектра пройдена успешно");
 
                 await ExtractPitch(); // Частота основного тона
-                _logger.LogInformation("Точка опредления основного тона пройдена успешно");
+                _logger.LogInformation("Точка определения основного тона пройдена успешно");
 
-                //await ExtractFormants(); // Извлечение формантных частот
+                await ExtractGlobalFormants(); // Извлечение формантных частот
                 _logger.LogInformation("Точка извлечения формантных частот пройдена успешно");
 
-                await AnalyzeRhythm(); // Анализ длительности слова и ритма
+                await AnalyzeRhythm(); // Анализ длительности слова
+                _logger.LogInformation("Точка анализ длительности слова пройдена успешно");
 
 
+                // await ExtractFormants();
                 //await ExtractCepstrum(); // Кэпстральные коэф (нестабильно)
-
 
                 // Deprecated 
                 //await ComputeAverageSlope(); // Средний наклон спектра (нестабильно), теперь стабильно, но эффекта почти нет, для одной фразы спектр схож даже на разных частотах, поэтому наклон будет един
@@ -77,6 +83,8 @@ namespace VoiceAuthentification.Services
                 return;
             }
         }
+
+        public string GetVoiceData() => ResponseData.ToEncryptedString(_decryptedKey);
 
         private async Task AnalyzeAsync()
         {
@@ -131,8 +139,58 @@ namespace VoiceAuthentification.Services
 
             _logger.LogInformation($"Средняя частота основного тона: {averagePitch} Гц");
             _logger.LogInformation($"Флуктуации частоты основного тона (СКО): {pitchStdDev} Гц");
+
+            ResponseData.Pitche = averagePitch;
+            ResponseData.Fluctuation = pitchStdDev;
         }
 
+        // для всей полосы
+        private async Task ExtractGlobalFormants()
+        {
+            int samplingRate = DiscreteSignal.SamplingRate;
+            int lpcOrder = LpcOrder;
+
+            var samples = DiscreteSignal.Samples;
+            var energy = samples.Sum(sample => sample * sample);
+
+            if (energy < EnergyThreshold)
+            {
+                _logger.LogInformation("Недостаточная энергия сигнала для анализа.");
+                return;
+            }
+
+            _logger.LogInformation($"Энергия: {energy}");
+            var windowedSamples = samples.Zip(NWaves.Windows.Window.OfType(NWaves.Windows.WindowType.Hamming, samples.Length), (s, w) => s * w).ToArray();
+
+            var autocorr = new float[lpcOrder + 1];
+            for (int j = 0; j <= lpcOrder; j++)
+            {
+                autocorr[j] = windowedSamples.Take(samples.Length - j).Zip(windowedSamples.Skip(j), (a, b) => a * b).Sum();
+            }
+
+            var lpcCoefficients = new float[lpcOrder + 1];
+            var error = Filter.LevinsonDurbin(autocorr, lpcCoefficients, lpcOrder);
+
+            var roots = MathUtils.PolynomialRoots(lpcCoefficients.Select(c => (double)c).ToArray());
+            var formants = roots
+                .Where(r => r.Imaginary >= 0)
+                .Select(r => (float)(samplingRate * Math.Atan2(r.Imaginary, r.Real) / (2 * Math.PI)))
+                .OrderBy(f => f)
+                .Take(3)
+                .ToArray();
+
+            _logger.LogInformation("Средние формантные частоты для всего сигнала:");
+            for (int j = 0; j < formants.Length; j++)
+            {
+                _logger.LogInformation($"F{j + 1}: {formants[j]} Гц");
+            }
+
+            ResponseData.Formants = formants.Select(s => (double)s).ToArray();
+        }
+
+
+
+        // для кусков
         private async Task ExtractFormants()
         {
             int samplingRate = DiscreteSignal.SamplingRate;
@@ -214,6 +272,8 @@ namespace VoiceAuthentification.Services
             }
 
             double dynamicThreshold = smoothedEnergies.Average() * 0.5;
+            List<double> duractionWords = new();
+
             foreach (var energy in smoothedEnergies)
             {
                 _logger.LogInformation($"Энергия фрейма {frameIndex}: {energy}");
@@ -233,13 +293,14 @@ namespace VoiceAuthentification.Services
                         isSpeech = false;
                         int speechEnd = frameIndex;
                         double duration = (speechEnd - speechStart) * hopSize / (double)samplingRate;
-
+                        duractionWords.Add(duration);
                         _logger.LogInformation($"Длительность слова: {duration} с");
-
                     }
                 }
                 frameIndex++;
             }
+
+            ResponseData.DurationWords = duractionWords.ToArray();
         }
 
         private async Task ExtractCepstrum()
@@ -275,7 +336,7 @@ namespace VoiceAuthentification.Services
             int N = Spectrum.Length;
             if (N == 0)
             {
-                _logger.LogWarning("Длина спектра равна нулю, невозможно вычислить наклон.");
+                _logger.LogWarning("Длина спектра нулевая, невозможно вычислить наклон.");
                 return;
             }
 
@@ -366,11 +427,11 @@ namespace VoiceAuthentification.Services
             try
             {
                 await Drawer.DrawPlot(type, SampleRate, Spectrum);
-                _logger.LogInformation($"[{nameof(Draw)}] The graphs have been successfully rendered");
+                _logger.LogInformation($"[{nameof(Draw)}] Графики были успешно нарисованы");
             }
             catch (Exception ex)
             {
-                _logger.LogInformation(ex ,$"[{nameof(Draw)}] Error when drawing graphs");
+                _logger.LogInformation(ex ,$"[{nameof(Draw)}] Ошибка при создании графиков");
             }
         }
 

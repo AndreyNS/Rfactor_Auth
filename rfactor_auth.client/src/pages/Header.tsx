@@ -20,14 +20,11 @@ const Header: React.FC = () => {
           </div>
       <nav>
         <ul className="nav-list">
-        <li>
-            <Link to="/account">ЛК</Link>
-            </li>
           <li>
             <Link to="/register">Регистрация</Link>
             </li>
             <li>
-                <Link to="/">Вход</Link>
+                <Link to="/login">Вход</Link>
             </li>
             <li>
                 <Link to="/voice">Тесты</Link>

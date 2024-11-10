@@ -1,0 +1,45 @@
+﻿/* Основные стили */
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    background-color: #121212;
+    color: #ff4b4b;
+    font-family: Arial, sans-serif;
+}
+
+#error-container {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+}
+#error-text {
+    font-size: 120px;
+    font-weight: bold;
+    line-height: 1;
+    display: flex;
+    color: #f0f0f0;
+    text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.6);
+}
+
+.letter {
+    transform-origin: bottom;
+}
+
+#error-text .letter:last-child {
+    display: inline-block;
+    transform: rotate(15deg);
+    color: #065096;
+    transition: transform 0.3s ease;
+    position: relative;
+}
+
+
+#error-image {
+    width: 120px;
+    height: auto;
+    object-fit: contain;
+    margin-bottom:-40px
+}

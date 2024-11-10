@@ -29,9 +29,11 @@ namespace VoiceAuthentification
                     AllowedGrantTypes = GrantTypes.Code,
                     RequirePkce = true,
                     RequireClientSecret = false,
-                    RedirectUris = { "http://localhost:3000/callback" },
-                    PostLogoutRedirectUris = { "http://localhost:3000/" },
-                    AllowedCorsOrigins = { "http://localhost:3000" },
+
+                    RedirectUris = { "https://localhost:7109/callback", "https://localhost:7109/api/protected/callback" },
+                    PostLogoutRedirectUris = { "https://localhost:7109/" },
+                    AllowedCorsOrigins = { "https://localhost:7109" }, 
+
                     AllowedScopes = { "openid", "profile", "api1.read" },
                     AllowAccessTokensViaBrowser = true,
                 }

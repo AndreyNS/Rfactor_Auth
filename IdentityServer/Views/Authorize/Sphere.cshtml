@@ -1,0 +1,296 @@
+﻿@model IdentityServer.Models.AuthViewModel
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>3D Interaction</title>
+    <link rel="stylesheet" href="@Url.Content("~/css/site.css")" />
+    <link rel="stylesheet" href="@Url.Content("~/css/sphere.css")" />
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="controls">
+        <button id="send-button">Отправить</button>
+        <button id="clear-button">Очистить</button>
+    </div>
+
+    <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/renderers/CSS2DRenderer.js"></script>
+
+
+    <script>
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 1000);
+        camera.position.z = 8;
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setClearColor(0x000000, 0);
+        container.appendChild(renderer.domElement);
+
+        const labelRenderer = new THREE.CSS2DRenderer();
+        labelRenderer.setSize(container.clientWidth, container.clientHeight);
+        labelRenderer.domElement.style.position = 'absolute';
+        labelRenderer.domElement.style.top = '0';
+        labelRenderer.domElement.style.pointerEvents = 'none';
+        container.appendChild(labelRenderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableZoom = false;
+        controls.enablePan = false;
+
+        let isRotating = true;
+        let isSending = false;
+        let selectedPoints = [];
+        let sphereScale = 1;
+        let rotationSpeed = 0.1;
+        let rotationTimer = null;
+
+        const radius = 3;
+        const globeGeometry = new THREE.SphereGeometry(radius, 32, 32);
+        const globeMaterial = new THREE.MeshPhysicalMaterial({
+            color: 0x000000, 
+            transparent: true,
+            opacity: 1, 
+            roughness: 0.9,
+            metalness: 0.0,  
+            transmission: 0.8, 
+            thickness: 0.5
+
+        });
+
+        const globeMesh = new THREE.Mesh(globeGeometry, globeMaterial);
+        globeMesh.callback = () => clickedSphere();
+        scene.add(globeMesh);
+
+        function generatePoints() {
+            const points = [];
+            const latStep = Math.PI / 8;
+            const longStep = Math.PI / 8;
+            let index = 1;
+            for (let lat = -Math.PI / 2 + latStep; lat <= Math.PI / 2 - latStep; lat += latStep) {
+                for (let lon = 0; lon < Math.PI * 2; lon += longStep) {
+                    const x = radius * Math.cos(lat) * Math.cos(lon);
+                    const y = radius * Math.sin(lat);
+                    const z = radius * Math.cos(lat) * Math.sin(lon);
+                    const point = createPoint(new THREE.Vector3(x, y, z), index);
+                    globeMesh.add(point.mesh); 
+                    points.push(point);
+                    index++;
+                }
+            }
+            return points;
+        }
+
+
+        const points = generatePoints();
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8); 
+        scene.add(ambientLight);
+
+        const pointLight = new THREE.PointLight(0xccccff, 1.5); 
+        pointLight.position.set(5, 5, 5);
+        scene.add(pointLight);
+
+
+        document.getElementById('send-button').addEventListener('click', () => {
+            isSending = true;
+            setTimeout(() => {
+                isSending = false;
+                clearSelection();
+            }, 5000);
+        });
+
+        document.getElementById('clear-button').addEventListener('click', () => {
+            clearSelection();
+            isSending = false;
+        });
+
+        function createPoint(position, label) {
+            const geometry = new THREE.SphereGeometry(0.06, 8, 8); 
+            const material = new THREE.MeshBasicMaterial({
+                color: 0x001a66
+            });
+
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.copy(position);
+
+            const div = document.createElement('div');
+            div.className = 'label';
+            div.textContent = label;
+            const labelObject = new THREE.CSS2DObject(div);
+            labelObject.position.set(0.1, 0.15, 0); 
+            mesh.add(labelObject);
+
+            mesh.userData = { label };
+            mesh.callback = () => handleClickPoint(mesh);
+
+            return { mesh, label };
+        }
+
+        function handleClickPoint(mesh) {
+            if (isSending) return;
+            const label = mesh.userData.label;
+            const index = selectedPoints.indexOf(label);
+            if (index >= 0) {
+                selectedPoints.splice(index, 1);
+                mesh.material.color.set(0x001a66);
+            } else {
+                selectedPoints.push(label);
+                mesh.material.color.set(0x6FF233);
+            }
+            clickedSphere();
+        }
+
+        function clickedSphere() {
+            isRotating = false;
+            clearTimeout(rotationTimer);
+            rotationTimer = setTimeout(() => {
+                isRotating = true;
+            }, 10000);
+        }
+
+        function clearSelection() {
+            selectedPoints = [];
+
+            points.forEach(point => {
+                point.mesh.material.color.set(0x001a66);
+            });
+
+            lines.forEach(line => globeMesh.remove(line));
+            lines = [];
+        }
+
+        function computeArcPoints(start, end, segments = 50) {
+            const arcPoints = [];
+            const angle = start.angleTo(end);
+            const axis = new THREE.Vector3().crossVectors(start, end).normalize();
+            for (let i = 0; i <= segments; i++) {
+                const t = i / segments;
+                const vector = start.clone().applyAxisAngle(axis, angle * t).normalize().multiplyScalar(radius);
+                arcPoints.push(vector);
+            }
+            return arcPoints;
+        }
+
+        let lines = [];
+        function updateLines() {
+            lines.forEach(line => globeMesh.remove(line));
+            lines = [];
+
+            if (selectedPoints.length >= 2) {
+                for (let i = 1; i < selectedPoints.length; i++) {
+                    const startLabel = selectedPoints[i - 1];
+                    const endLabel = selectedPoints[i];
+
+                    const startPoint = points.find(p => p.label === startLabel).mesh;
+                    const endPoint = points.find(p => p.label === endLabel).mesh;
+
+                    const startPosWorld = new THREE.Vector3();
+                    const endPosWorld = new THREE.Vector3();
+                    startPoint.getWorldPosition(startPosWorld);
+                    endPoint.getWorldPosition(endPosWorld);
+
+                    const startPosLocal = globeMesh.worldToLocal(startPosWorld);
+                    const endPosLocal = globeMesh.worldToLocal(endPosWorld);
+
+                    const arcPoints = computeArcPoints(startPosLocal, endPosLocal); 
+                    const curve = new THREE.CatmullRomCurve3(arcPoints);
+                    const tubeGeometry = new THREE.TubeGeometry(curve, 64, 0.02, 8, false);
+                    const tubeMaterial = new THREE.MeshStandardMaterial({ color: 0x631313 });
+                    const tubeMesh = new THREE.Mesh(tubeGeometry, tubeMaterial);
+
+                    globeMesh.add(tubeMesh); 
+                    lines.push(tubeMesh);
+                }
+            }
+        }
+
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (isRotating && !isSending) {
+                globeMesh.rotation.y += rotationSpeed * 0.01;
+            }
+
+            if (isSending) {
+                globeMesh.rotation.y += 0.04;
+                if (sphereScale > 0.6) {
+                    sphereScale -= 0.005;
+                    globeMesh.scale.set(sphereScale, sphereScale, sphereScale);
+                }
+
+                points.forEach(point => {
+                    point.mesh.children.forEach(child => {
+                        if (child instanceof THREE.CSS2DObject) {
+                            point.mesh.remove(child);
+                        }
+                    });
+
+                    point.mesh.material.opacity = 0;
+                    point.mesh.material.transparent = true;
+                });
+
+            } else {
+                if (sphereScale < 1) {
+                    sphereScale += 0.005;
+                    globeMesh.scale.set(sphereScale, sphereScale, sphereScale);
+                }
+
+                points.forEach(point => {
+                    if (!point.mesh.children.some(child => child instanceof THREE.CSS2DObject)) {
+                        const div = document.createElement('div');
+                        div.className = 'label';
+                        div.textContent = point.label;
+                        const labelObject = new THREE.CSS2DObject(div);
+                        labelObject.position.set(0.1, 0.15, 0);
+                        point.mesh.add(labelObject);
+                    }
+
+                    point.mesh.material.opacity = 1;
+                });
+            }
+
+            controls.update();
+            updateLines();
+            renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
+        }
+
+
+
+
+        window.addEventListener('resize', () => {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            labelRenderer.setSize(container.clientWidth, container.clientHeight);
+        });
+
+        renderer.domElement.addEventListener('click', onMouseClick, false);
+        function onMouseClick(event) {
+            clickedSphere();
+            event.preventDefault();
+            if (event.isTrusted) {
+                const mouse = new THREE.Vector2(
+                    (event.clientX / renderer.domElement.clientWidth) * 2 - 1,
+                    -(event.clientY / renderer.domElement.clientHeight) * 2 + 1
+                );
+                const raycaster = new THREE.Raycaster();
+                raycaster.setFromCamera(mouse, camera);
+                const clickableObjects = points.map(p => p.mesh);
+                const intersects = raycaster.intersectObjects(clickableObjects);
+                if (intersects.length > 0) {
+                    const intersectedObject = intersects[0].object;
+                    intersectedObject.callback();
+                }
+            }
+        }
+
+        animate();
+    </script>
+</body>
+</html>
