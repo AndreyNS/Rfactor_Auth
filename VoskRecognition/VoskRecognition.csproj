@@ -10,6 +10,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="VoskModel\vosk-model-ru-0.42\**" />
+    <Content Remove="VoskModel\vosk-model-ru-0.42\**" />
+    <EmbeddedResource Remove="VoskModel\vosk-model-ru-0.42\**" />
+    <None Remove="VoskModel\vosk-model-ru-0.42\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.21.0" />
     <PackageReference Include="NAudio" Version="2.2.1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
