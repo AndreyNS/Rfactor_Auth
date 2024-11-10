@@ -363,3 +363,5 @@ MigrationBackup/
 FodyWeavers.xsd
 /VoiceAuthentification/tempkey.jwk
 /VoiceAuthentification/secret.json
+VoiceAuthentification/VoskModel/
+VoskRecognition/VoskModel/
